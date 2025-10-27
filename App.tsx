@@ -21,7 +21,7 @@ import { useAuth } from './components/icons/hooks/useAuth';
 import { useSettings } from './components/icons/hooks/useSettings';
 
 // Import Backend API
-import { vorlagenAPI, chatsAPI, filesAPI } from './lib/api';
+import { vorlagenAPI, chatsAPI, filesAPI, settingsAPI } from './lib/api';
 
 const App: React.FC = () => {
     // Hooks
@@ -56,7 +56,32 @@ const App: React.FC = () => {
         event?.preventDefault();
         
         // Refresh data when navigating to specific views
-        if (targetView === View.VORLAGEN_LIST) {
+        if (targetView === View.ADMIN && user?.role === UserRole.ADMIN) {
+            // Load global settings from backend
+            try {
+                const globalSettings = await settingsAPI.getGlobal();
+                updateSettings({
+                    globalSystemPrompt: globalSettings.global_system_prompt,
+                    lightrag_enabled: globalSettings.lightrag_enabled,
+                    lightrag_url: globalSettings.lightrag_url,
+                    lightrag_api_key: globalSettings.lightrag_api_key,
+                    lightrag_mode: globalSettings.lightrag_mode,
+                    lightrag_top_k: globalSettings.lightrag_top_k,
+                    lightrag_chunk_top_k: globalSettings.lightrag_chunk_top_k,
+                    lightrag_max_entity_tokens: globalSettings.lightrag_max_entity_tokens,
+                    lightrag_max_relation_tokens: globalSettings.lightrag_max_relation_tokens,
+                    lightrag_max_total_tokens: globalSettings.lightrag_max_total_tokens,
+                    lightrag_enable_rerank: globalSettings.lightrag_enable_rerank,
+                    lightrag_include_references: globalSettings.lightrag_include_references,
+                    lightrag_stream: globalSettings.lightrag_stream,
+                });
+            } catch (error: any) {
+                console.error('Error loading global settings:', error);
+                // Continue to admin view even if settings fail to load
+            }
+            setView(targetView);
+            setViewData(data);
+        } else if (targetView === View.VORLAGEN_LIST) {
             setIsFetchingVorlagen(true);
             try {
                 const fetchedVorlagen = await vorlagenAPI.getAll();

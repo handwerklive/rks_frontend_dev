@@ -4,6 +4,7 @@ import Header from './Header';
 import CheckIcon from './icons/CheckIcon';
 import UserIcon from './icons/UserIcon';
 import WrenchIcon from './icons/WrenchIcon';
+import { settingsAPI } from '../lib/api';
 
 
 interface AdminViewProps {
@@ -38,6 +39,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const [lightragStream, setLightragStream] = useState(false);
   
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,31 +58,66 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     setLightragStream(settings.lightrag_stream || false);
   }, [settings]);
 
-  const handleSaveGlobalSettings = () => {
-    onUpdateSettings({ 
-      globalSystemPrompt: globalSystemPrompt,
-    });
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
+  const handleSaveGlobalSettings = async () => {
+    setIsSaving(true);
+    try {
+      await settingsAPI.updateGlobal({ 
+        global_system_prompt: globalSystemPrompt,
+      });
+      // Also update local state
+      onUpdateSettings({ 
+        globalSystemPrompt: globalSystemPrompt,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('Error saving global settings:', error);
+      alert('Fehler beim Speichern: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsSaving(false);
+    }
   };
   
-  const handleSaveLightRAGSettings = () => {
-    onUpdateSettings({ 
-      lightrag_enabled: lightragEnabled,
-      lightrag_url: lightragUrl,
-      lightrag_api_key: lightragApiKey,
-      lightrag_mode: lightragMode,
-      lightrag_top_k: lightragTopK,
-      lightrag_chunk_top_k: lightragChunkTopK,
-      lightrag_max_entity_tokens: lightragMaxEntityTokens,
-      lightrag_max_relation_tokens: lightragMaxRelationTokens,
-      lightrag_max_total_tokens: lightragMaxTotalTokens,
-      lightrag_enable_rerank: lightragEnableRerank,
-      lightrag_include_references: lightragIncludeReferences,
-      lightrag_stream: lightragStream,
-    });
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
+  const handleSaveLightRAGSettings = async () => {
+    setIsSaving(true);
+    try {
+      await settingsAPI.updateGlobal({ 
+        lightrag_enabled: lightragEnabled,
+        lightrag_url: lightragUrl,
+        lightrag_api_key: lightragApiKey,
+        lightrag_mode: lightragMode,
+        lightrag_top_k: lightragTopK,
+        lightrag_chunk_top_k: lightragChunkTopK,
+        lightrag_max_entity_tokens: lightragMaxEntityTokens,
+        lightrag_max_relation_tokens: lightragMaxRelationTokens,
+        lightrag_max_total_tokens: lightragMaxTotalTokens,
+        lightrag_enable_rerank: lightragEnableRerank,
+        lightrag_include_references: lightragIncludeReferences,
+        lightrag_stream: lightragStream,
+      });
+      // Also update local state
+      onUpdateSettings({ 
+        lightrag_enabled: lightragEnabled,
+        lightrag_url: lightragUrl,
+        lightrag_api_key: lightragApiKey,
+        lightrag_mode: lightragMode,
+        lightrag_top_k: lightragTopK,
+        lightrag_chunk_top_k: lightragChunkTopK,
+        lightrag_max_entity_tokens: lightragMaxEntityTokens,
+        lightrag_max_relation_tokens: lightragMaxRelationTokens,
+        lightrag_max_total_tokens: lightragMaxTotalTokens,
+        lightrag_enable_rerank: lightragEnableRerank,
+        lightrag_include_references: lightragIncludeReferences,
+        lightrag_stream: lightragStream,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('Error saving LightRAG settings:', error);
+      alert('Fehler beim Speichern: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const filteredUsers = useMemo(() => 
@@ -197,9 +234,10 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
 
               <button
                   onClick={handleSaveGlobalSettings}
-                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2"
+                  disabled={isSaving}
+                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'System-Prompt Speichern'}
+                  {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'System-Prompt Speichern'}
                 </button>
             </div>
           </div>
@@ -413,9 +451,10 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
 
               <button
                   onClick={handleSaveLightRAGSettings}
-                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2"
+                  disabled={isSaving}
+                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'LightRAG-Einstellungen Speichern'}
+                  {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'LightRAG-Einstellungen Speichern'}
                 </button>
             </div>
           </div>

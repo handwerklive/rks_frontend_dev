@@ -162,5 +162,18 @@ export const filesAPI = {
   },
 };
 
+// Settings API
+export const settingsAPI = {
+  getGlobal: async () => {
+    const response = await apiClient.get('/api/settings/global');
+    return response.data;
+  },
+  
+  updateGlobal: async (data: any) => {
+    const response = await apiClient.patch('/api/settings/global', data);
+    return response.data;
+  },
+};
+
 export default apiClient;
 
