@@ -129,6 +129,81 @@ export const chatsAPI = {
     return response.data;
   },
   
+  sendMessageStream: async (
+    data: any,
+    onStatus: (message: string) => void,
+    onContent: (content: string) => void,
+    onDone: (messageId: string) => void,
+    onChatId: (chatId: number) => void,
+    onTitle: (title: string) => void,
+    onError: (error: string) => void
+  ) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/chats/message/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error('No reader available');
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            try {
+              const event = JSON.parse(jsonStr);
+              
+              switch (event.type) {
+                case 'chat_id':
+                  onChatId(event.chat_id);
+                  break;
+                case 'status':
+                  onStatus(event.message);
+                  break;
+                case 'content':
+                  onContent(event.content);
+                  break;
+                case 'title':
+                  onTitle(event.title);
+                  break;
+                case 'done':
+                  onDone(event.message_id);
+                  break;
+                case 'error':
+                  onError(event.error);
+                  break;
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE event:', e);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+  
   getMessages: async (chatId: number) => {
     const response = await apiClient.get(`/api/chats/${chatId}`);
     // Backend returns full chat object with messages array
