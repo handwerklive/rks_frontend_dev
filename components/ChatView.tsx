@@ -207,6 +207,12 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
         const bgColor = isUser ? 'bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)]' : 'bg-white border border-gray-200';
         const textColor = isUser ? 'text-white' : 'text-gray-800';
 
+        // Split content at "Referenzen:" if it exists
+        const referenzenIndex = msg.content.indexOf('Referenzen:');
+        const hasReferences = referenzenIndex !== -1;
+        const mainContent = hasReferences ? msg.content.substring(0, referenzenIndex).trim() : msg.content;
+        const referencesContent = hasReferences ? msg.content.substring(referenzenIndex).trim() : '';
+
         const handleCopy = async (mode: 'plain' | 'markdown' = 'plain') => {
             try {
                 if (mode === 'markdown' && 'clipboard' in navigator && 'write' in navigator.clipboard) {
@@ -237,38 +243,53 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
         };
 
         return (
-            <div className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'justify-end' : ''} px-2 sm:px-0`}>
-                {!isUser && (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                        <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-                    </div>
-                )}
-                <div className={`group relative max-w-[85%] sm:max-w-[75%] md:max-w-lg p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0`}>
-                    {msg.attachment && msg.attachment.type === 'image' && (
-                        <div className="mb-2">
-                             <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg w-full max-w-xs max-h-64 object-contain bg-black/10" />
+            <>
+                {/* Main message bubble */}
+                <div className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'justify-end' : ''} px-2 sm:px-0`}>
+                    {!isUser && (
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                            <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                         </div>
                     )}
-                    <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere word-break">
-                        <MarkdownRenderer content={msg.content} />
+                    <div className={`group relative max-w-[85%] sm:max-w-[75%] md:max-w-lg p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0`}>
+                        {msg.attachment && msg.attachment.type === 'image' && (
+                            <div className="mb-2">
+                                 <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg w-full max-w-xs max-h-64 object-contain bg-black/10" />
+                            </div>
+                        )}
+                        <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere word-break">
+                            <MarkdownRenderer content={mainContent} />
+                        </div>
+                        {!isUser && msg.content && (
+                            <div className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="relative">
+                                    <button onClick={() => setShowCopyMenu(v => !v)} className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all" aria-label="Kopieroptionen">
+                                        {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
+                                    </button>
+                                    {showCopyMenu && (
+                                        <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-xl shadow-xl p-1 w-44 animate-fade-in">
+                                            <button onClick={() => handleCopy('plain')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Text kopieren</button>
+                                            <button onClick={() => handleCopy('markdown')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Markdown kopieren</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    {!isUser && msg.content && (
-                        <div className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="relative">
-                                <button onClick={() => setShowCopyMenu(v => !v)} className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all" aria-label="Kopieroptionen">
-                                    {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
-                                </button>
-                                {showCopyMenu && (
-                                    <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-xl shadow-xl p-1 w-44 animate-fade-in">
-                                        <button onClick={() => handleCopy('plain')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Text kopieren</button>
-                                        <button onClick={() => handleCopy('markdown')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Markdown kopieren</button>
-                                    </div>
-                                )}
+                </div>
+
+                {/* References bubble - only for bot messages with references */}
+                {hasReferences && !isUser && (
+                    <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0 mt-2">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0"></div>
+                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-lg p-2.5 sm:p-3 rounded-2xl shadow-sm bg-gray-50 border border-gray-300 text-gray-700 min-w-0">
+                            <div className="whitespace-pre-wrap break-words text-xs sm:text-sm font-mono">
+                                {referencesContent}
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                )}
+            </>
         );
     };
 
