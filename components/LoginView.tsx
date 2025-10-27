@@ -48,12 +48,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full p-4 sm:p-6 text-gray-800 animate-fade-in-view">
+    <div className="flex flex-col items-center justify-center h-full p-3 sm:p-4 md:p-6 text-gray-800 animate-fade-in-view overflow-y-auto">
       <div className="w-full max-w-sm mx-auto">
-        <div className="text-center mb-8">
-            <img src="https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png" alt="RKS Logo" className="w-48 mx-auto mb-6 drop-shadow-lg" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">RKS Chatbot</h1>
-            <p className="text-gray-600">{isRegisterMode ? 'Erstelle einen neuen Account.' : 'Melde dich an, um fortzufahren.'}</p>
+        <div className="text-center mb-6 sm:mb-8">
+            <img src="https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png" alt="RKS Logo" className="w-36 sm:w-48 mx-auto mb-4 sm:mb-6 drop-shadow-lg" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">RKS Chatbot</h1>
+            <p className="text-sm sm:text-base text-gray-600">{isRegisterMode ? 'Erstelle einen neuen Account.' : 'Melde dich an, um fortzufahren.'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

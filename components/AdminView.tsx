@@ -142,14 +142,14 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const TabButton: React.FC<{tabId: 'users' | 'global' | 'lightrag', label: string, icon: React.ReactNode}> = ({tabId, label, icon}) => (
       <button
         onClick={() => setActiveTab(tabId)}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-semibold text-sm transition-all border-b-2 ${
+        className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 font-semibold text-xs sm:text-sm transition-all border-b-2 ${
             activeTab === tabId
             ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
             : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-800'
         }`}
       >
-        {icon}
-        {label}
+        <span className="hidden sm:inline">{icon}</span>
+        <span className="truncate">{label}</span>
       </button>
   );
 
@@ -157,11 +157,11 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     <div className="flex flex-col h-full text-gray-800">
       <Header title="Admin Einstellungen" onNavigate={onNavigate} onLogout={onLogout} showBackButton />
       
-      <div className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-          <div className="flex">
-              <TabButton tabId="users" label="Benutzer" icon={<UserIcon className="w-5 h-5"/>} />
-              <TabButton tabId="global" label="System-Prompt" icon={<WrenchIcon className="w-5 h-5"/>} />
-              <TabButton tabId="lightrag" label="LightRAG" icon={<WrenchIcon className="w-5 h-5"/>} />
+      <div className="border-b border-gray-200 bg-white/80 backdrop-blur-sm overflow-x-auto">
+          <div className="flex min-w-max sm:min-w-0">
+              <TabButton tabId="users" label="Benutzer" icon={<UserIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
+              <TabButton tabId="global" label="System" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
+              <TabButton tabId="lightrag" label="LightRAG" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
           </div>
       </div>
       

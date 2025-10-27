@@ -335,14 +335,6 @@ const App: React.FC = () => {
         }
     };
     
-    const handleClearChat = (chatId: number) => {
-        setChatSessions(prev =>
-            prev.map(cs =>
-                cs.id === chatId ? { ...cs, messages: [] } : cs
-            )
-        );
-    };
-    
     const handleDeleteChat = async (chatId: number) => {
         setIsLoading(true);
         try {
@@ -407,7 +399,7 @@ const App: React.FC = () => {
                     handleNavigate(View.HOME);
                     return null;
                 }
-                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} settings={settings} onUpdateSettings={updateSettings} onClearChat={handleClearChat} />;
+                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} settings={settings} onUpdateSettings={updateSettings} />;
             default:
                 return <LoginView onLogin={handleLogin} onRegister={handleRegister} onNavigate={handleNavigate} />;
         }

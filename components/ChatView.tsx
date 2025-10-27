@@ -20,10 +20,9 @@ interface ChatViewProps {
   isLoadingTimeout: boolean;
   settings: Settings;
   onUpdateSettings: (newSettings: Partial<Settings>) => void;
-  onClearChat: (chatId: number) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, onClearChat }) => {
+const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout }) => {
     const [message, setMessage] = useState('');
     const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
     const [isListening, setIsListening] = useState(false);
@@ -238,19 +237,19 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
         };
 
         return (
-            <div className={`flex items-start gap-3 ${isUser ? 'justify-end' : ''}`}>
+            <div className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'justify-end' : ''} px-2 sm:px-0`}>
                 {!isUser && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                        <HardHatIcon className="w-5 h-5 text-gray-500" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                        <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                     </div>
                 )}
-                <div className={`group relative max-w-lg p-3 rounded-2xl shadow-sm ${bgColor} ${textColor}`}>
+                <div className={`group relative max-w-[85%] sm:max-w-[75%] md:max-w-lg p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0`}>
                     {msg.attachment && msg.attachment.type === 'image' && (
                         <div className="mb-2">
-                             <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg max-w-xs max-h-64 object-contain bg-black/10" />
+                             <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg w-full max-w-xs max-h-64 object-contain bg-black/10" />
                         </div>
                     )}
-                    <div className="whitespace-pre-wrap break-words">
+                    <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere word-break">
                         <MarkdownRenderer content={msg.content} />
                     </div>
                     {!isUser && msg.content && (
@@ -276,25 +275,23 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     return (
         <div className="flex flex-col h-full bg-gray-50 text-gray-800">
             <Header
-                title={chatSession.title}
+                title={vorlage ? vorlage.name : 'Schneller Chat'}
                 onNavigate={onNavigate}
                 onLogout={onLogout}
                 showBackButton
                 backTargetView={vorlage ? View.CHAT_LIST : View.HOME}
                 backTargetData={vorlage ? { vorlageId: chatSession.vorlage_id } : undefined}
-                showClearButton={chatSession.messages.length > 0}
-                onClear={() => onClearChat(chatSession.id)}
             />
             <div className="flex-1 p-4 space-y-4 overflow-y-auto">
                 {chatSession.messages.map(msg => (
                     <ChatMessage key={msg.id} msg={msg} />
                 ))}
                 {isLoading && (
-                    <div className="flex items-start gap-3">
-                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-1">
-                            <HardHatIcon className="w-5 h-5 text-gray-500" />
+                    <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0">
+                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-1">
+                            <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                         </div>
-                        <div className="max-w-lg p-4 rounded-2xl bg-white border border-gray-200 shadow-sm transition-all duration-500">
+                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-lg p-3 sm:p-4 rounded-2xl bg-white border border-gray-200 shadow-sm transition-all duration-500">
                             {!isLoadingTimeout ? (
                                 <div className="flex items-center gap-2 text-gray-500">
                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
@@ -302,16 +299,16 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                                 </div>
                             ) : (
-                                <div className="flex flex-col gap-3 animate-fade-in">
+                                <div className="flex flex-col gap-2 sm:gap-3 animate-fade-in">
                                     <div className="flex items-center gap-2">
-                                        <div className="relative">
-                                            <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                                            <div className="absolute inset-0 w-5 h-5 border-2 border-amber-300 rounded-full animate-ping opacity-20"></div>
+                                        <div className="relative flex-shrink-0">
+                                            <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="absolute inset-0 w-4 h-4 sm:w-5 sm:h-5 border-2 border-amber-300 rounded-full animate-ping opacity-20"></div>
                                         </div>
-                                        <span className="text-sm font-medium text-amber-600">Die Anfrage dauert länger als üblich...</span>
+                                        <span className="text-xs sm:text-sm font-medium text-amber-600">Dauert länger...</span>
                                     </div>
                                     <p className="text-xs text-gray-500 leading-relaxed">
-                                        Die Verarbeitung Ihrer Anfrage nimmt mehr Zeit in Anspruch. Bitte haben Sie noch einen Moment Geduld.
+                                        Bitte haben Sie noch einen Moment Geduld.
                                     </p>
                                 </div>
                             )}
@@ -321,35 +318,35 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 bg-white border-t border-gray-200 shadow-sm">
+            <div className="p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
                  {attachment && (
-                    <div className="mb-2 p-2 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-between text-sm shadow-sm">
+                    <div className="mb-2 p-2 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-between text-xs sm:text-sm shadow-sm">
                         <span className="truncate text-gray-700">{attachment.name}</span>
                         <button onClick={() => setAttachment(null)} className="text-gray-500 hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1" aria-label="Anhang entfernen">&times;</button>
                     </div>
                 )}
-                <div className="flex items-end gap-2">
+                <div className="flex items-end gap-1.5 sm:gap-2">
                     {/* Mikrofon-Button links */}
                     <button 
                         onClick={handleToggleListening} 
-                        className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-[var(--primary-color)] hover:scale-110 active:scale-95 transition-all relative bg-gray-100 rounded-full border border-gray-300 shadow-sm" 
+                        className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-[var(--primary-color)] active:scale-95 transition-all relative bg-gray-100 rounded-full border border-gray-300 shadow-sm" 
                         aria-label="Spracheingabe"
                     >
-                        <MicrophoneIcon className="w-5 h-5" />
+                        <MicrophoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                         {isListening && <span className="absolute inset-0 bg-red-500 rounded-full opacity-75 animate-ping"></span>}
                     </button>
 
                     {/* Textarea mittig - wächst flexibel */}
-                    <div className="flex-1 bg-gray-100 rounded-2xl border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary-color)] focus-within:border-transparent transition-all">
+                    <div className="flex-1 bg-gray-100 rounded-2xl border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary-color)] focus-within:border-transparent transition-all min-w-0">
                         <textarea
                             ref={textAreaRef}
                             value={message}
                             onChange={e => setMessage(e.target.value)}
                             onKeyDown={handleKeyPress}
-                            placeholder="Nachricht eingeben..."
+                            placeholder="Nachricht..."
                             rows={1}
-                            className="w-full bg-transparent resize-none focus:outline-none rounded-2xl px-4 placeholder-gray-400 leading-relaxed flex items-center"
-                            style={{ minHeight: '44px', maxHeight: '200px', paddingTop: '11px', paddingBottom: '11px' }}
+                            className="w-full bg-transparent resize-none focus:outline-none rounded-2xl px-3 sm:px-4 placeholder-gray-400 leading-relaxed flex items-center text-sm sm:text-base"
+                            style={{ minHeight: '40px', maxHeight: '200px', paddingTop: '10px', paddingBottom: '10px' }}
                         />
                     </div>
 
@@ -357,10 +354,10 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                     <button 
                         onClick={handleSend} 
                         disabled={isLoading || (!message.trim() && !attachment)} 
-                        className="w-11 h-11 flex-shrink-0 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white rounded-full shadow-md shadow-[var(--primary-color)]/20 flex items-center justify-center disabled:opacity-50 hover:shadow-lg hover:shadow-[var(--primary-color)]/30 hover:scale-105 active:scale-95 transition-all" 
+                        className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white rounded-full shadow-md shadow-[var(--primary-color)]/20 flex items-center justify-center disabled:opacity-50 hover:shadow-lg hover:shadow-[var(--primary-color)]/30 active:scale-95 transition-all" 
                         aria-label="Senden"
                     >
-                        <EnterIcon className="w-5 h-5" />
+                        <EnterIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                 </div>
             </div>
