@@ -23,6 +23,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   // Global Settings
   const [globalSystemPrompt, setGlobalSystemPrompt] = useState('');
   const [openaiModel, setOpenaiModel] = useState('gpt-5-nano');
+  const [streamingEnabled, setStreamingEnabled] = useState(true);
   
   // LightRAG Settings
   const [lightragEnabled, setLightragEnabled] = useState(false);
@@ -56,6 +57,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   useEffect(() => {
     setGlobalSystemPrompt(settings.globalSystemPrompt || '');
     setOpenaiModel(settings.openai_model || 'gpt-5-nano');
+    setStreamingEnabled(settings.streaming_enabled !== undefined ? settings.streaming_enabled : true);
     setLightragEnabled(settings.lightrag_enabled || false);
     setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query');
     setLightragApiKey(settings.lightrag_api_key || '');
@@ -76,11 +78,13 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
       await settingsAPI.updateGlobal({ 
         global_system_prompt: globalSystemPrompt,
         openai_model: openaiModel,
+        streaming_enabled: streamingEnabled,
       });
       // Also update local state
       onUpdateSettings({ 
         globalSystemPrompt: globalSystemPrompt,
         openai_model: openaiModel,
+        streaming_enabled: streamingEnabled,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -378,6 +382,23 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                   <strong>Reasoning:</strong> o-Serie für komplexe Problemlösung und Deep Research<br/>
                   <strong>Hinweis:</strong> Nur Text-Modelle. Cached Input und Batch/Flex/Priority-Preise können abweichen
                 </p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={streamingEnabled}
+                    onChange={(e) => setStreamingEnabled(e.target.checked)}
+                    className="h-5 w-5 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">OpenAI Streaming aktivieren</span>
+                    <p className="text-xs text-gray-500">
+                      Wenn aktiviert, werden AI-Antworten in Echtzeit gestreamt (empfohlen für bessere UX)
+                    </p>
+                  </div>
+                </label>
               </div>
 
               <div>

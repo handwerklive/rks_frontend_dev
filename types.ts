@@ -85,6 +85,7 @@ export interface Settings {
     
     // OpenAI Configuration (Admin)
     openai_model?: string;
+    streaming_enabled?: boolean;
     
     // LightRAG Configuration (Admin)
     lightrag_enabled?: boolean;

@@ -64,6 +64,7 @@ const App: React.FC = () => {
                 updateSettings({
                     globalSystemPrompt: globalSettings.global_system_prompt,
                     openai_model: globalSettings.openai_model,
+                    streaming_enabled: globalSettings.streaming_enabled,
                     lightrag_enabled: globalSettings.lightrag_enabled,
                     lightrag_url: globalSettings.lightrag_url,
                     lightrag_api_key: globalSettings.lightrag_api_key,
@@ -290,11 +291,15 @@ const App: React.FC = () => {
                 finalMessageContent = `Beantworte die folgende Frage des Nutzers ausschließlich auf Basis des nachfolgenden Kontexts aus den bereitgestellten Dokumenten. Wenn die Antwort nicht im Kontext zu finden ist, weise den Nutzer klar darauf hin.\n\n### KONTEXT ###\n${filesContext}\n\n### FRAGE ###\n${messageContent}`;
             }
 
-            // Prepare streaming request
-            const token = localStorage.getItem('access_token');
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+            // Check if streaming is enabled
+            const useStreaming = settings.streaming_enabled !== false; // Default to true if not set
             
-            const response = await fetch(`${API_BASE_URL}api/chats/message/stream`, {
+            if (useStreaming) {
+                // Streaming mode
+                const token = localStorage.getItem('access_token');
+                const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                
+                const response = await fetch(`${API_BASE_URL}api/chats/message/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -405,6 +410,42 @@ const App: React.FC = () => {
                         }
                     }
                 }
+            }
+            } else {
+                // Non-streaming mode (fallback)
+                const response = await chatsAPI.sendMessage({
+                    message: finalMessageContent,
+                    chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId,
+                    vorlage_id: chatBeforeUpdate.vorlage_id,
+                    attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
+                });
+                
+                // Update status based on backend response
+                if (response.status_log && response.status_log.length > 0) {
+                    const lastStatus = response.status_log[response.status_log.length - 1];
+                    setLoadingStatus(lastStatus);
+                }
+                
+                // Update chat ID if it was newly created
+                if (response.chat_id !== chatId) {
+                    setChatSessions(prev => prev.map(cs => 
+                        cs.id === chatId ? { ...cs, id: response.chat_id } : cs
+                    ));
+                    setCurrentChatId(response.chat_id);
+                }
+                
+                // Add AI response to messages
+                const modelMessage: Message = {
+                    id: response.message_id,
+                    role: 'model',
+                    content: response.response,
+                    timestamp: new Date().toISOString(),
+                    attachment: null,
+                };
+
+                setChatSessions(prev => prev.map(cs => 
+                    cs.id === response.chat_id ? { ...cs, messages: [...cs.messages, modelMessage] } : cs
+                ));
             }
 
         } catch (error: any) {
