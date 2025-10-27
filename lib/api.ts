@@ -139,7 +139,7 @@ export const chatsAPI = {
     onError: (error: string) => void
   ) => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/api/chats/message/stream`, {
+    const response = await fetch(`${API_BASE_URL}/api/chats/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
