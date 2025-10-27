@@ -175,5 +175,40 @@ export const settingsAPI = {
   },
 };
 
+// Logs API (Admin)
+export const logsAPI = {
+  getAll: async (params?: {
+    log_type?: string;
+    user_id?: string;
+    chat_id?: number;
+    start_date?: string;
+    end_date?: string;
+    min_duration_ms?: number;
+    max_duration_ms?: number;
+    status_code?: number;
+    search_term?: string;
+    limit?: number;
+    offset?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }) => {
+    const response = await apiClient.get('/api/logs', { params });
+    return response.data;
+  },
+  
+  getStats: async () => {
+    const response = await apiClient.get('/api/logs/stats');
+    return response.data;
+  },
+  
+  delete: async (logId: number) => {
+    await apiClient.delete(`/api/logs/${logId}`);
+  },
+  
+  deleteAll: async (confirm: boolean = false) => {
+    await apiClient.delete('/api/logs', { params: { confirm } });
+  },
+};
+
 export default apiClient;
 

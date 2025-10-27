@@ -75,6 +75,9 @@ export interface Settings {
     // Global Settings (Admin)
     globalSystemPrompt?: string;
     
+    // OpenAI Configuration (Admin)
+    openai_model?: string;
+    
     // LightRAG Configuration (Admin)
     lightrag_enabled?: boolean;
     lightrag_url?: string;

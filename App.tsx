@@ -62,6 +62,7 @@ const App: React.FC = () => {
                 const globalSettings = await settingsAPI.getGlobal();
                 updateSettings({
                     globalSystemPrompt: globalSettings.global_system_prompt,
+                    openai_model: globalSettings.openai_model,
                     lightrag_enabled: globalSettings.lightrag_enabled,
                     lightrag_url: globalSettings.lightrag_url,
                     lightrag_api_key: globalSettings.lightrag_api_key,
