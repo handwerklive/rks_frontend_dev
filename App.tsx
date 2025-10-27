@@ -50,93 +50,13 @@ const App: React.FC = () => {
             setViewData(null);
         }
     }, [user]);
-    
-    // --- Data Normalization Helpers ---
-    const normalizeRole = (role: any): UserRole => {
-        if (typeof role === 'string') {
-            const lowerRole = role.toLowerCase();
-            if (lowerRole === 'admin') return UserRole.ADMIN;
-        }
-        return UserRole.USER;
-    };
-
-    const normalizeStatus = (status: any): UserStatus => {
-        // Force conversion to a lowercase string to handle various input types robustly.
-        const lowerStatus = String(status).toLowerCase();
-        // Only 'active' or 'aktiv' are considered ACTIVE status.
-        if (lowerStatus === 'active' || lowerStatus === 'aktiv') {
-            return UserStatus.ACTIVE;
-        }
-        // Everything else is PENDING. This ensures all users are processed and displayed.
-        return UserStatus.PENDING;
-    };
 
     // Navigation Handler
     const handleNavigate = async (targetView: View, event?: React.MouseEvent, data?: any) => {
         event?.preventDefault();
         
-        // Intercept navigation to Admin view to fetch fresh user data
-        if (targetView === View.ADMIN && user?.role === UserRole.ADMIN) {
-            if (!settings.n8nGetUserWebhookUrl) {
-                alert('Benutzer-Abruf-Webhook-URL ist nicht konfiguriert.');
-                return;
-            }
-            setIsFetchingUsers(true);
-            try {
-                const response = await fetch(settings.n8nGetUserWebhookUrl);
-                if (!response.ok) throw new Error(`Fehler beim Abrufen der Benutzer: ${response.statusText}`);
-                
-                const fetchedData: any = await response.json();
-
-                // Step 1: Find an array of potential user items from the response.
-                let rawUserList: any[] = [];
-                if (Array.isArray(fetchedData)) {
-                    // The response is a direct array.
-                    rawUserList = fetchedData;
-                } else if (typeof fetchedData === 'object' && fetchedData !== null) {
-                    // The response is an object. Look for the first property that is an array.
-                    const arrayInObject = Object.values(fetchedData).find(v => Array.isArray(v));
-                    // FIX: Use Array.isArray as a type guard to ensure arrayInObject is treated as an array, resolving a potential type error.
-                    if (Array.isArray(arrayInObject)) {
-                        rawUserList = arrayInObject;
-                    } else if (fetchedData.email) {
-                        // If no array is found, maybe the object itself is a single user.
-                        rawUserList = [fetchedData];
-                    }
-                }
-
-                // Step 2: Unwrap n8n's item structure `{"json": ...}` and filter for valid user-like objects.
-                const userList = rawUserList
-                    .map(item => {
-                        // If an item is wrapped in a 'json' property (common n8n pattern), extract it.
-                        if (item && typeof item === 'object' && item.json && typeof item.json === 'object') {
-                            return item.json;
-                        }
-                        return item;
-                    })
-                    .filter(item => 
-                        // Ensure we only process valid objects that have an email property.
-                        item && typeof item === 'object' && typeof item.email === 'string'
-                    );
-
-                // Step 3: Normalize the clean list of user objects into the User[] type.
-                const normalizedUsers: User[] = userList.map(u => ({
-                    id: u.email, // Use email as a unique ID
-                    name: u.name,
-                    email: u.email,
-                    role: normalizeRole(u.role),
-                    status: normalizeStatus(u.status),
-                }));
-                
-                replaceAllUsers(normalizedUsers);
-                setView(View.ADMIN);
-                setViewData(data);
-            } catch (error) {
-                alert(`Benutzer konnten nicht geladen werden. Bitte überprüfe die Konfiguration. Fehler: ${error}`);
-            } finally {
-                setIsFetchingUsers(false);
-            }
-        } else if (targetView === View.VORLAGEN_LIST) {
+        // Refresh data when navigating to specific views
+        if (targetView === View.VORLAGEN_LIST) {
             setIsFetchingVorlagen(true);
             try {
                 const fetchedVorlagen = await vorlagenAPI.getAll();

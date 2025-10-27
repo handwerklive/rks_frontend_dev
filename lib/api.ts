@@ -130,8 +130,9 @@ export const chatsAPI = {
   },
   
   getMessages: async (chatId: number) => {
-    const response = await apiClient.get(`/api/chats/${chatId}/messages`);
-    return response.data;
+    const response = await apiClient.get(`/api/chats/${chatId}`);
+    // Backend returns full chat object with messages array
+    return response.data.messages || [];
   },
   
   delete: async (chatId: number) => {
