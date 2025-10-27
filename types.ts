@@ -72,6 +72,10 @@ export interface Settings {
     // FastAPI Backend URL
     apiBaseUrl: string;
     
+    // Global Settings (Admin)
+    lightragQuery?: string;
+    globalSystemPrompt?: string;
+    
     // Legacy n8n fields (deprecated)
     n8nLoginWebhookUrl: string | null;
     n8nGetUserWebhookUrl: string | null;
