@@ -296,7 +296,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     return (
         <div className="flex flex-col h-full bg-gray-50 text-gray-800">
             <Header
-                title={vorlage ? vorlage.name : 'Schneller Chat'}
+                title={chatSession.title || (vorlage ? vorlage.name : 'Schneller Chat')}
                 onNavigate={onNavigate}
                 onLogout={onLogout}
                 showBackButton
