@@ -15,12 +15,14 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
   const [description, setDescription] = useState('');
   const [system_prompt, setSystemPrompt] = useState('');
   const [isGlobal, setIsGlobal] = useState(false);
+  const [useLightrag, setUseLightrag] = useState(false);
 
   useEffect(() => {
     if (existingVorlage) {
       setName(existingVorlage.name);
       setDescription(existingVorlage.description);
       setSystemPrompt(existingVorlage.system_prompt);
+      setUseLightrag(existingVorlage.use_lightrag || false);
     }
   }, [existingVorlage]);
 
@@ -30,7 +32,7 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
         alert("Bitte gib einen Namen für die Vorlage ein.");
         return;
     }
-    onSave({ name, description, system_prompt, isFavorite: existingVorlage?.isFavorite || false }, { isGlobal });
+    onSave({ name, description, system_prompt, isFavorite: existingVorlage?.isFavorite || false, use_lightrag: useLightrag }, { isGlobal });
   };
   
   return (
@@ -85,6 +87,20 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
            <p className="mt-2 text-xs text-gray-500">
               Dieser Prompt wird bei jeder Nachricht an den Bot gesendet, um sein Verhalten zu steuern.
             </p>
+        </div>
+        <div>
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={useLightrag}
+              onChange={(e) => setUseLightrag(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
+            />
+            LightRAG Wissensdatenbank verwenden
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            Wenn aktiviert, wird bei Anfragen mit dieser Vorlage die LightRAG Wissensdatenbank durchsucht (nur wenn sinnvoll).
+          </p>
         </div>
         {isAdmin && !existingVorlage && (
           <div>
