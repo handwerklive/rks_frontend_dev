@@ -36,7 +36,7 @@ export async function streamChatMessage(
   vorlageId: number | null,
   callbacks: StreamCallbacks
 ): Promise<void> {
-  const url = `${apiBaseUrl}/api/chats/stream`;
+  const url = `${apiBaseUrl}/api/chats/message/stream`;
   
   const response = await fetch(url, {
     method: 'POST',

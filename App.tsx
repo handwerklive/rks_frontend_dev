@@ -288,99 +288,34 @@ const App: React.FC = () => {
                 finalMessageContent = `Beantworte die folgende Frage des Nutzers ausschließlich auf Basis des nachfolgenden Kontexts aus den bereitgestellten Dokumenten. Wenn die Antwort nicht im Kontext zu finden ist, weise den Nutzer klar darauf hin.\n\n### KONTEXT ###\n${filesContext}\n\n### FRAGE ###\n${messageContent}`;
             }
 
-            // Send message via Backend API with Streaming
-            let actualChatId = chatId;
-            let streamingContent = '';
-            let statusMessage = '';
+            // Send message via Backend API
+            const response = await chatsAPI.sendMessage({
+                message: finalMessageContent,
+                chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId, // If temp ID, create new chat
+                vorlage_id: chatBeforeUpdate.vorlage_id,
+                attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
+            });
             
-            // Add temporary AI message for streaming
-            const tempAiMessageId = `ai-${Date.now()}`;
-            const tempAiMessage: Message = {
-                id: tempAiMessageId,
+            // Update chat ID if it was newly created
+            if (response.chat_id !== chatId) {
+                setChatSessions(prev => prev.map(cs => 
+                    cs.id === chatId ? { ...cs, id: response.chat_id } : cs
+                ));
+                setCurrentChatId(response.chat_id);
+            }
+            
+            // Add AI response to messages
+            const modelMessage: Message = {
+                id: response.message_id,
                 role: 'model',
-                content: '',
+                content: response.response,
                 timestamp: new Date().toISOString(),
                 attachment: null,
             };
-            
+
             setChatSessions(prev => prev.map(cs => 
-                cs.id === actualChatId ? { ...cs, messages: [...cs.messages, tempAiMessage] } : cs
+                cs.id === response.chat_id ? { ...cs, messages: [...cs.messages, modelMessage] } : cs
             ));
-            
-            await chatsAPI.sendMessageStream(
-                {
-                    message: finalMessageContent,
-                    chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId,
-                    vorlage_id: chatBeforeUpdate.vorlage_id,
-                    attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
-                },
-                // onStatus
-                (message: string) => {
-                    statusMessage = message;
-                    setChatSessions(prev => prev.map(cs => 
-                        cs.id === actualChatId ? {
-                            ...cs,
-                            messages: cs.messages.map(m => 
-                                m.id === tempAiMessageId ? { ...m, content: `_${message}_` } : m
-                            )
-                        } : cs
-                    ));
-                },
-                // onContent
-                (content: string) => {
-                    streamingContent += content;
-                    setChatSessions(prev => prev.map(cs => 
-                        cs.id === actualChatId ? {
-                            ...cs,
-                            messages: cs.messages.map(m => 
-                                m.id === tempAiMessageId ? { ...m, content: streamingContent } : m
-                            )
-                        } : cs
-                    ));
-                },
-                // onDone
-                (messageId: string) => {
-                    // Update with final message ID
-                    setChatSessions(prev => prev.map(cs => 
-                        cs.id === actualChatId ? {
-                            ...cs,
-                            messages: cs.messages.map(m => 
-                                m.id === tempAiMessageId ? { ...m, id: messageId } : m
-                            )
-                        } : cs
-                    ));
-                },
-                // onChatId
-                (newChatId: number) => {
-                    // Update chat ID if it was newly created
-                    if (newChatId !== actualChatId) {
-                        setChatSessions(prev => prev.map(cs => 
-                            cs.id === actualChatId ? { ...cs, id: newChatId } : cs
-                        ));
-                        setCurrentChatId(newChatId);
-                        actualChatId = newChatId;
-                    }
-                },
-                // onTitle
-                (title: string) => {
-                    // Update chat title
-                    setChatSessions(prev => prev.map(cs => 
-                        cs.id === actualChatId ? { ...cs, title } : cs
-                    ));
-                },
-                // onError
-                (error: string) => {
-                    console.error('Streaming error:', error);
-                    setChatSessions(prev => prev.map(cs => 
-                        cs.id === actualChatId ? {
-                            ...cs,
-                            messages: cs.messages.map(m => 
-                                m.id === tempAiMessageId ? { ...m, content: `Fehler: ${error}` } : m
-                            )
-                        } : cs
-                    ));
-                }
-            );
 
         } catch (error: any) {
             console.error('Error sending message:', error);
