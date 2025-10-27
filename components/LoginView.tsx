@@ -8,7 +8,8 @@ interface LoginViewProps {
 }
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }) => {
-  // Registration temporarily disabled
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -20,10 +21,24 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
     setIsLoading(true);
 
     try {
-        // Registration is disabled for now; always attempt login
-        const result = await onLogin(email, password);
-        if (!result.success) {
-            setError(result.error || 'Login fehlgeschlagen. Überprüfe deine Anmeldedaten.');
+        if (isRegisterMode) {
+            // Registration mode
+            const result = await onRegister(name, email, password);
+            if (!result.success) {
+                setError(result.error || 'Registrierung fehlgeschlagen. Bitte versuche es erneut.');
+            } else {
+                // Switch to login mode after successful registration
+                setIsRegisterMode(false);
+                setName('');
+                setPassword('');
+                setError(null);
+            }
+        } else {
+            // Login mode
+            const result = await onLogin(email, password);
+            if (!result.success) {
+                setError(result.error || 'Login fehlgeschlagen. Überprüfe deine Anmeldedaten.');
+            }
         }
     } catch (e) {
         setError('Ein unerwarteter Fehler ist aufgetreten.');
@@ -38,10 +53,26 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
         <div className="text-center mb-8">
             <img src="https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png" alt="RKS Logo" className="w-48 mx-auto mb-6 drop-shadow-lg" />
             <h1 className="text-3xl font-bold text-gray-900 mb-2">RKS Chatbot</h1>
-            <p className="text-gray-600">Melde dich an, um fortzufahren.</p>
+            <p className="text-gray-600">{isRegisterMode ? 'Erstelle einen neuen Account.' : 'Melde dich an, um fortzufahren.'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isRegisterMode && (
+            <div>
+              <label htmlFor="name" className="sr-only">Name</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Name"
+                className="w-full bg-white h-12 px-4 py-3 rounded-xl border border-gray-300 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent focus:shadow-md transition-all placeholder:text-gray-400"
+              />
+            </div>
+          )}
           <div>
             <label htmlFor="email" className="sr-only">E-Mail</label>
             <input
@@ -62,7 +93,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
               id="password"
               name="password"
               type="password"
-              autoComplete={'current-password'}
+              autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -84,13 +115,29 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Wird geladen...
                 </span>
-              ) : 'Anmelden'}
+              ) : isRegisterMode ? 'Registrieren' : 'Anmelden'}
             </button>
           </div>
         </form>
 
-        {/* Demo-Daten */}
-        <div className="mt-6">
+        {/* Toggle between Login and Register */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegisterMode(!isRegisterMode);
+              setError(null);
+              setName('');
+              setPassword('');
+            }}
+            className="text-sm text-[var(--primary-color)] hover:text-[var(--secondary-color)] font-medium transition-colors"
+          >
+            {isRegisterMode ? 'Bereits einen Account? Hier anmelden' : 'Noch keinen Account? Hier registrieren'}
+          </button>
+        </div>
+
+        {/* Demo-Daten - only show in login mode */}
+        {!isRegisterMode && <div className="mt-6">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 shadow-sm">
             <p className="font-semibold mb-2">Demo-Zugangsdaten</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1">
@@ -98,7 +145,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
               <p><span className="font-medium">Passwort:</span> MusterMann!</p>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );
