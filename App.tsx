@@ -272,10 +272,10 @@ const App: React.FC = () => {
         setIsLoadingTimeout(false);
         setLoadingStatus('Verarbeite Anfrage...');
         
-        // Set timeout indicator after 40 seconds
+        // Set timeout indicator after 90 seconds (before the 120s API timeout)
         const timeoutTimer = setTimeout(() => {
             setIsLoadingTimeout(true);
-        }, 40000);
+        }, 90000);
         
         // Simulate status updates (will be replaced by actual backend updates)
         const statusInterval = setInterval(() => {

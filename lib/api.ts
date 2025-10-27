@@ -9,7 +9,7 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 seconds
+  timeout: 120000, // 120 seconds (2 minutes) - increased for LightRAG queries
 });
 
 // Request interceptor to add auth token
