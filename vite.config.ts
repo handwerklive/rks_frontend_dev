@@ -9,19 +9,20 @@ export default defineConfig(({ mode }) => {
     return {
       plugins: [react()],
       
-      // Server configuration for development and preview
+      // Server configuration for development
       server: {
-        host: '0.0.0.0',
+        host: true, // Listen on all addresses
         port: 5173,
         strictPort: false,
       },
       
       // Preview configuration (used by pnpm preview)
       preview: {
-        host: '0.0.0.0',
+        host: true, // Listen on all addresses
         port: 3000,
         strictPort: false,
-        // Allow all hosts - wichtig für Coolify/Docker
+        cors: true,
+        // Allow all hosts for Coolify/Docker deployments
         allowedHosts: ['*'],
       },
       

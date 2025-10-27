@@ -8,5 +8,5 @@ cmds = ["pnpm install --frozen-lockfile"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "pnpm preview --host 0.0.0.0 --port 3000"
+cmd = "pnpm preview --host 0.0.0.0 --port 3000 --strictPort false"
 
