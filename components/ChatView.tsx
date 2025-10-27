@@ -1,0 +1,371 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { ChatSession, Vorlage, View, Settings, Message } from '../types';
+import Header from './Header';
+import MarkdownRenderer, { parseMarkdown } from './MarkdownRenderer';
+import EnterIcon from './icons/EnterIcon';
+// import PaperclipIcon from './icons/PaperclipIcon';
+import CopyIcon from './icons/CopyIcon';
+import CheckIcon from './icons/CheckIcon';
+import HardHatIcon from './icons/HardHatIcon';
+import MicrophoneIcon from './icons/MicrophoneIcon';
+
+// Props interface based on App.tsx usage
+interface ChatViewProps {
+  chatSession: ChatSession;
+  vorlage: Vorlage | null;
+  onSendMessage: (chatId: number, messageContent: string, useDocuments: boolean, attachment: { mimeType: string; data: string } | null) => void;
+  onNavigate: (view: View, event?: React.MouseEvent) => void;
+  onLogout: () => void;
+  isLoading: boolean;
+  isLoadingTimeout: boolean;
+  settings: Settings;
+  onUpdateSettings: (newSettings: Partial<Settings>) => void;
+  onClearChat: (chatId: number) => void;
+}
+
+const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, onClearChat }) => {
+    const [message, setMessage] = useState('');
+    const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
+    const [isListening, setIsListening] = useState(false);
+    
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
+    // FIX: Use `any` for SpeechRecognition as its types may not be available in all TypeScript environments.
+    const recognitionRef = useRef<any | null>(null);
+    
+    // Track listening state across event handlers and a restart timer for resilient continuous dictation.
+    const listeningRef = useRef<boolean>(false);
+    const restartTimerRef = useRef<number | null>(null);
+
+
+    // Speech Recognition Setup
+    useEffect(() => {
+        // @ts-ignore
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn("Speech recognition not supported in this browser.");
+            return;
+        }
+
+        const recognition: any = new SpeechRecognition();
+        recognition.continuous = true; // allow long dictation
+        recognition.interimResults = true; // get partial results for smoother experience
+        recognition.maxAlternatives = 1;
+        recognition.lang = 'de-DE';
+
+        // Append only FINAL transcripts to the input to avoid choppy, fragmented text.
+        recognition.onresult = (event: any) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const res = event.results[i];
+                const text = res[0]?.transcript ?? '';
+                if (res.isFinal && text) finalTranscript += text;
+            }
+            if (finalTranscript) {
+                const toAppend = finalTranscript.trim();
+                if (toAppend) {
+                    setMessage(prev => (prev ? prev + ' ' : '') + toAppend);
+                }
+            }
+        };
+
+        recognition.onend = () => {
+            // Auto-restart while the user is in listening mode (browsers stop after silence)
+            if (listeningRef.current) {
+                if (restartTimerRef.current) window.clearTimeout(restartTimerRef.current);
+                restartTimerRef.current = window.setTimeout(() => {
+                    try { recognition.start(); } catch (_) {}
+                }, 200);
+            } else {
+                setIsListening(false);
+            }
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error('Speech recognition error:', event.error);
+            // Attempt to recover from transient errors while listening
+            const recoverable = ['no-speech', 'audio-capture', 'network'];
+            if (listeningRef.current && recoverable.includes(String(event.error))) {
+                try { recognition.stop(); } catch (_) {}
+                if (restartTimerRef.current) window.clearTimeout(restartTimerRef.current);
+                restartTimerRef.current = window.setTimeout(() => {
+                    try { recognition.start(); } catch (_) { /* swallow */ }
+                }, 300);
+                return;
+            }
+            listeningRef.current = false;
+            setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+
+        return () => {
+            try { recognition.onresult = null; recognition.onerror = null; recognition.onend = null; } catch (_) {}
+            try { recognition.stop(); } catch (_) {}
+            if (restartTimerRef.current) window.clearTimeout(restartTimerRef.current);
+        };
+    }, []);
+
+    const handleToggleListening = () => {
+        const recognition = recognitionRef.current;
+        if (!recognition) return;
+
+        if (isListening) {
+            // Stop listening
+            listeningRef.current = false;
+            try { recognition.stop(); } catch (_) {}
+            setIsListening(false);
+            if (restartTimerRef.current) window.clearTimeout(restartTimerRef.current);
+            return;
+        }
+
+        // Start listening
+        try {
+            listeningRef.current = true;
+            recognition.start();
+            setIsListening(true);
+        } catch (e) {
+            console.error("Speech recognition could not be started: ", e);
+            listeningRef.current = false;
+            setIsListening(false);
+        }
+    };
+
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [chatSession.messages, isLoading]);
+
+    // Auto-resize textarea
+    useEffect(() => {
+        const textArea = textAreaRef.current;
+        if (textArea) {
+            textArea.style.height = 'auto';
+            const scrollHeight = textArea.scrollHeight;
+            textArea.style.height = `${scrollHeight}px`;
+        }
+    }, [message]);
+    
+    // Adjust height on initial load
+    useEffect(() => {
+       const timer = setTimeout(() => {
+         const textArea = textAreaRef.current;
+         if (textArea) {
+            textArea.style.height = 'auto';
+            textArea.style.height = `${textArea.scrollHeight}px`;
+         }
+       }, 50); // Small delay to ensure render
+       return () => clearTimeout(timer);
+    }, [chatSession.id]);
+
+    // Removed: more options menu for 'Dokumente nutzen'
+
+
+    const handleSend = () => {
+        if (isLoading) return;
+        if (message.trim() || attachment) {
+            onSendMessage(chatSession.id, message, false, attachment);
+            setMessage('');
+            setAttachment(null);
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+    
+    const handleAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = (reader.result as string).split(',')[1];
+                setAttachment({
+                    mimeType: file.type,
+                    data: base64String,
+                    name: file.name,
+                });
+            };
+            reader.readAsDataURL(file);
+        } else if (file) {
+            alert("Bitte nur Bilddateien auswählen.");
+        }
+        e.target.value = '';
+    };
+
+    const ChatMessage: React.FC<{ msg: Message }> = ({ msg }) => {
+        const [copied, setCopied] = useState(false);
+        const [showCopyMenu, setShowCopyMenu] = useState(false);
+        const isUser = msg.role === 'user';
+        const bgColor = isUser ? 'bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)]' : 'bg-white border border-gray-200';
+        const textColor = isUser ? 'text-white' : 'text-gray-800';
+
+        const handleCopy = async (mode: 'plain' | 'markdown' = 'plain') => {
+            try {
+                if (mode === 'markdown' && 'clipboard' in navigator && 'write' in navigator.clipboard) {
+                    const html = parseMarkdown(msg.content);
+                    const item = new ClipboardItem({
+                        'text/plain': new Blob([msg.content], { type: 'text/plain' }),
+                        'text/markdown': new Blob([msg.content], { type: 'text/markdown' }),
+                        'text/html': new Blob([html], { type: 'text/html' }),
+                    });
+                    await (navigator.clipboard as any).write([item]);
+                } else {
+                    await navigator.clipboard.writeText(msg.content);
+                }
+                setCopied(true);
+                setShowCopyMenu(false);
+                setTimeout(() => setCopied(false), 2000);
+            } catch (e) {
+                // Fallback in case ClipboardItem is not supported
+                try {
+                    await navigator.clipboard.writeText(msg.content);
+                    setCopied(true);
+                    setShowCopyMenu(false);
+                    setTimeout(() => setCopied(false), 2000);
+                } catch (_) {
+                    alert('Kopieren nicht möglich. Bitte erlaube Zugriff auf die Zwischenablage.');
+                }
+            }
+        };
+
+        return (
+            <div className={`flex items-start gap-3 ${isUser ? 'justify-end' : ''}`}>
+                {!isUser && (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                        <HardHatIcon className="w-5 h-5 text-gray-500" />
+                    </div>
+                )}
+                <div className={`group relative max-w-lg p-3 rounded-2xl shadow-sm ${bgColor} ${textColor}`}>
+                    {msg.attachment && msg.attachment.type === 'image' && (
+                        <div className="mb-2">
+                             <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg max-w-xs max-h-64 object-contain bg-black/10" />
+                        </div>
+                    )}
+                    <div className="whitespace-pre-wrap break-words">
+                        <MarkdownRenderer content={msg.content} />
+                    </div>
+                    {!isUser && msg.content && (
+                        <div className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="relative">
+                                <button onClick={() => setShowCopyMenu(v => !v)} className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all" aria-label="Kopieroptionen">
+                                    {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
+                                </button>
+                                {showCopyMenu && (
+                                    <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-xl shadow-xl p-1 w-44 animate-fade-in">
+                                        <button onClick={() => handleCopy('plain')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Text kopieren</button>
+                                        <button onClick={() => handleCopy('markdown')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Markdown kopieren</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-gray-50 text-gray-800">
+            <Header
+                title={chatSession.title}
+                onNavigate={onNavigate}
+                onLogout={onLogout}
+                showBackButton
+                backTargetView={vorlage ? View.CHAT_LIST : View.HOME}
+                backTargetData={vorlage ? { vorlageId: chatSession.vorlage_id } : undefined}
+                showClearButton={chatSession.messages.length > 0}
+                onClear={() => onClearChat(chatSession.id)}
+            />
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+                {chatSession.messages.map(msg => (
+                    <ChatMessage key={msg.id} msg={msg} />
+                ))}
+                {isLoading && (
+                    <div className="flex items-start gap-3">
+                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-1">
+                            <HardHatIcon className="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div className="max-w-lg p-4 rounded-2xl bg-white border border-gray-200 shadow-sm transition-all duration-500">
+                            {!isLoadingTimeout ? (
+                                <div className="flex items-center gap-2 text-gray-500">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-3 animate-fade-in">
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="absolute inset-0 w-5 h-5 border-2 border-amber-300 rounded-full animate-ping opacity-20"></div>
+                                        </div>
+                                        <span className="text-sm font-medium text-amber-600">Die Anfrage dauert länger als üblich...</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Die Verarbeitung Ihrer Anfrage nimmt mehr Zeit in Anspruch. Bitte haben Sie noch einen Moment Geduld.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 bg-white border-t border-gray-200 shadow-sm">
+                 {attachment && (
+                    <div className="mb-2 p-2 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-between text-sm shadow-sm">
+                        <span className="truncate text-gray-700">{attachment.name}</span>
+                        <button onClick={() => setAttachment(null)} className="text-gray-500 hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1" aria-label="Anhang entfernen">&times;</button>
+                    </div>
+                )}
+                <div className="flex items-end gap-2">
+                    {/* Mikrofon-Button links */}
+                    <button 
+                        onClick={handleToggleListening} 
+                        className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-[var(--primary-color)] hover:scale-110 active:scale-95 transition-all relative bg-gray-100 rounded-full border border-gray-300 shadow-sm" 
+                        aria-label="Spracheingabe"
+                    >
+                        <MicrophoneIcon className="w-5 h-5" />
+                        {isListening && <span className="absolute inset-0 bg-red-500 rounded-full opacity-75 animate-ping"></span>}
+                    </button>
+
+                    {/* Textarea mittig - wächst flexibel */}
+                    <div className="flex-1 bg-gray-100 rounded-2xl border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary-color)] focus-within:border-transparent transition-all">
+                        <textarea
+                            ref={textAreaRef}
+                            value={message}
+                            onChange={e => setMessage(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            placeholder="Nachricht eingeben..."
+                            rows={1}
+                            className="w-full bg-transparent resize-none focus:outline-none rounded-2xl px-4 placeholder-gray-400 leading-relaxed flex items-center"
+                            style={{ minHeight: '44px', maxHeight: '200px', paddingTop: '11px', paddingBottom: '11px' }}
+                        />
+                    </div>
+
+                    {/* Senden-Button rechts */}
+                    <button 
+                        onClick={handleSend} 
+                        disabled={isLoading || (!message.trim() && !attachment)} 
+                        className="w-11 h-11 flex-shrink-0 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white rounded-full shadow-md shadow-[var(--primary-color)]/20 flex items-center justify-center disabled:opacity-50 hover:shadow-lg hover:shadow-[var(--primary-color)]/30 hover:scale-105 active:scale-95 transition-all" 
+                        aria-label="Senden"
+                    >
+                        <EnterIcon className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ChatView;

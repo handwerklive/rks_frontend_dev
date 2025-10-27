@@ -1,0 +1,7 @@
+{
+  "name": "RKS Chatbot",
+  "description": "Ihr Chatbot für RKS - Retzbach Klima Service.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
