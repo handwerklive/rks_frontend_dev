@@ -69,6 +69,10 @@ export interface AppFile {
 }
 
 export interface Settings {
+    // FastAPI Backend URL
+    apiBaseUrl: string;
+    
+    // Legacy n8n fields (deprecated)
     n8nLoginWebhookUrl: string | null;
     n8nGetUserWebhookUrl: string | null;
     n8nUpdateUserWebhookUrl: string | null;
@@ -78,5 +82,6 @@ export interface Settings {
     n8nCreateVorlageWebhookUrl?: string | null;
     n8nGetChatsWebhookUrl: string | null;
     n8nGetMessagesWebhookUrl: string | null;
+    
     personalizationPrompt: string;
 }

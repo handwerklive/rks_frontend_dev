@@ -5,63 +5,23 @@ import { useLocalStorage } from './useLocalStorage';
 // Settings are sourced from environment variables and seeded into localStorage on first run.
 // Update your .env and reload the app to change defaults; you can also override via Settings UI at runtime.
 
-// Prefer Vite's import.meta.env for client builds; fall back to process.env keys that are injected via vite.define.
+// Prefer Vite's import.meta.env for client builds
 const V: any = import.meta.env || {};
 
 const buildSettings: Settings = {
-  // Login / Users
-  n8nLoginWebhookUrl:
-    V.VITE_N8N_LOGIN_WEBHOOK_URL ||
-    process.env.N8N_LOGIN_WEBHOOK_URL ||
-    null,
-  n8nGetUserWebhookUrl:
-    V.VITE_N8N_GET_USER_WEBHOOK_URL ||
-    process.env.N8N_GET_USER_WEBHOOK_URL ||
-    null,
-  n8nUpdateUserWebhookUrl:
-    V.VITE_N8N_UPDATE_USER_WEBHOOK_URL ||
-    process.env.N8N_UPDATE_USER_WEBHOOK_URL ||
-    null,
-
-  // Registration: support multiple common env names
-  n8nRegisterUserWebhookUrl:
-    V.VITE_N8N_REGISTER_USER_WEBHOOK_URL ||
-    process.env.N8N_REGISTER_USER_WEBHOOK_URL ||
-    process.env.NEXT_PUBLIC_N8N_REGISTER_USER_WEBHOOK_URL ||
-    process.env.VITE_N8N_REGISTER_USER_WEBHOOK_URL ||
-    process.env.REACT_APP_N8N_REGISTER_USER_WEBHOOK_URL ||
-    null,
-
-  // Chat / Vorlagen
-  n8nChatWebhookUrl:
-    V.VITE_N8N_CHAT_WEBHOOK_URL ||
-    process.env.N8N_CHAT_WEBHOOK_URL ||
-    null,
-  n8nGetVorlagenWebhookUrl:
-    V.VITE_N8N_GET_VORLAGEN_WEBHOOK_URL ||
-    process.env.N8N_GET_VORLAGEN_WEBHOOK_URL ||
-    null,
-  n8nCreateVorlageWebhookUrl:
-    V.VITE_N8N_CREATE_VORLAGE_WEBHOOK_URL ||
-    process.env.N8N_CREATE_VORLAGE_WEBHOOK_URL ||
-    process.env.N8N_CREATE_VORLAGEN_WEBHOOK_URL ||
-    process.env.NEXT_PUBLIC_N8N_CREATE_VORLAGE_WEBHOOK_URL ||
-    process.env.REACT_APP_N8N_CREATE_VORLAGE_WEBHOOK_URL ||
-    null,
-  n8nGetChatsWebhookUrl:
-    V.VITE_N8N_GET_CHATS_WEBHOOK_URL ||
-    process.env.N8N_GET_CHATS_WEBHOOK_URL ||
-    process.env.VITE_N8N_GET_CHATS_WEBHOOK_URL ||
-    process.env.NEXT_PUBLIC_N8N_GET_CHATS_WEBHOOK_URL ||
-    process.env.REACT_APP_N8N_GET_CHATS_WEBHOOK_URL ||
-    null,
-  n8nGetMessagesWebhookUrl:
-    V.VITE_N8N_GET_MESSAGES_WEBHOOK_URL ||
-    process.env.N8N_GET_MESSAGES_WEBHOOK_URL ||
-    process.env.VITE_N8N_GET_MESSAGES_WEBHOOK_URL ||
-    process.env.NEXT_PUBLIC_N8N_GET_MESSAGES_WEBHOOK_URL ||
-    process.env.REACT_APP_N8N_GET_MESSAGES_WEBHOOK_URL ||
-    null,
+  // API Base URL (FastAPI Backend)
+  apiBaseUrl: V.VITE_API_BASE_URL || 'http://localhost:8000',
+  
+  // Legacy n8n fields (deprecated, kept for backwards compatibility)
+  n8nLoginWebhookUrl: null,
+  n8nGetUserWebhookUrl: null,
+  n8nUpdateUserWebhookUrl: null,
+  n8nRegisterUserWebhookUrl: null,
+  n8nChatWebhookUrl: null,
+  n8nGetVorlagenWebhookUrl: null,
+  n8nCreateVorlageWebhookUrl: null,
+  n8nGetChatsWebhookUrl: null,
+  n8nGetMessagesWebhookUrl: null,
 
   personalizationPrompt: '',
 };
@@ -109,3 +69,4 @@ export function useSettings() {
 
   return { settings, updateSettings };
 }
+
