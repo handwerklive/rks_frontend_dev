@@ -344,8 +344,6 @@ const App: React.FC = () => {
     };
     
     const handleDeleteChat = async (chatId: number) => {
-        if (!confirm('Möchtest du diesen Chat wirklich löschen?')) return;
-        
         setIsLoading(true);
         try {
             await chatsAPI.delete(chatId);
@@ -355,8 +353,6 @@ const App: React.FC = () => {
                 setCurrentChatId(null);
                 setView(View.HOME);
             }
-            
-            alert('Chat erfolgreich gelöscht!');
         } catch (error: any) {
             console.error('Error deleting chat:', error);
             alert('Fehler beim Löschen des Chats: ' + (error.response?.data?.detail || error.message));
