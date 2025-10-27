@@ -50,7 +50,14 @@ export interface Message {
   role: 'user' | 'model';
   content: string;
   timestamp: string;
-  attachment?: Attachment | null;
+  attachment: Attachment | null;
+}
+
+export interface ChatMessageResponse {
+  response: string;
+  chat_id: number;
+  message_id: string;
+  status_log?: string[];
 }
 
 export interface ChatSession {

@@ -36,6 +36,7 @@ const App: React.FC = () => {
     const [currentChatId, setCurrentChatId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingTimeout, setIsLoadingTimeout] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState<string>('Verarbeite Anfrage...');
     const [isFetchingUsers, setIsFetchingUsers] = useState(false);
     const [isFetchingVorlagen, setIsFetchingVorlagen] = useState(false);
     const [isFetchingChats, setIsFetchingChats] = useState(false);
@@ -269,11 +270,21 @@ const App: React.FC = () => {
         
         setIsLoading(true);
         setIsLoadingTimeout(false);
+        setLoadingStatus('Verarbeite Anfrage...');
         
         // Set timeout indicator after 40 seconds
         const timeoutTimer = setTimeout(() => {
             setIsLoadingTimeout(true);
         }, 40000);
+        
+        // Simulate status updates (will be replaced by actual backend updates)
+        const statusInterval = setInterval(() => {
+            setLoadingStatus(prev => {
+                if (prev === 'Verarbeite Anfrage...') return 'Analysiere Anfrage...';
+                if (prev === 'Analysiere Anfrage...') return 'Generiere Antwort...';
+                return prev;
+            });
+        }, 2000);
 
         try {
             // Optimistically add user message to UI
@@ -295,6 +306,13 @@ const App: React.FC = () => {
                 vorlage_id: chatBeforeUpdate.vorlage_id,
                 attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
             });
+            
+            // Update status based on backend response
+            if (response.status_log && response.status_log.length > 0) {
+                // Display the last status from backend
+                const lastStatus = response.status_log[response.status_log.length - 1];
+                setLoadingStatus(lastStatus);
+            }
             
             // Update chat ID if it was newly created
             if (response.chat_id !== chatId) {
@@ -331,7 +349,9 @@ const App: React.FC = () => {
             ));
         } finally {
             clearTimeout(timeoutTimer);
+            clearInterval(statusInterval);
             setIsLoading(false);
+            setLoadingStatus('Verarbeite Anfrage...');
             setIsLoadingTimeout(false);
         }
     };
@@ -400,7 +420,7 @@ const App: React.FC = () => {
                     handleNavigate(View.HOME);
                     return null;
                 }
-                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} settings={settings} onUpdateSettings={updateSettings} />;
+                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} loadingStatus={loadingStatus} settings={settings} onUpdateSettings={updateSettings} />;
             default:
                 return <LoginView onLogin={handleLogin} onRegister={handleRegister} onNavigate={handleNavigate} />;
         }

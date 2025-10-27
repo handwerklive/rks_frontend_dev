@@ -18,11 +18,12 @@ interface ChatViewProps {
   onLogout: () => void;
   isLoading: boolean;
   isLoadingTimeout: boolean;
+  loadingStatus?: string;  // Current status message
   settings: Settings;
   onUpdateSettings: (newSettings: Partial<Settings>) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout }) => {
+const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, loadingStatus }) => {
     const [message, setMessage] = useState('');
     const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
     const [isListening, setIsListening] = useState(false);
@@ -309,15 +310,18 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 ))}
                 {isLoading && (
                     <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0">
-                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-1">
-                            <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
+                            <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
-                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-lg p-3 sm:p-4 rounded-2xl bg-white border border-gray-200 shadow-sm transition-all duration-500">
+                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-lg p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm transition-all duration-500">
                             {!isLoadingTimeout ? (
-                                <div className="flex items-center gap-2 text-gray-500">
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                                <div className="flex items-center gap-3">
+                                    <div className="relative flex-shrink-0">
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                    <span className="text-sm font-medium text-blue-700">
+                                        {loadingStatus || 'Verarbeite Anfrage...'}
+                                    </span>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-2 sm:gap-3 animate-fade-in">
