@@ -73,8 +73,21 @@ export interface Settings {
     apiBaseUrl: string;
     
     // Global Settings (Admin)
-    lightragQuery?: string;
     globalSystemPrompt?: string;
+    
+    // LightRAG Configuration (Admin)
+    lightrag_enabled?: boolean;
+    lightrag_url?: string;
+    lightrag_api_key?: string;
+    lightrag_mode?: 'local' | 'global' | 'hybrid' | 'mix';
+    lightrag_top_k?: number;
+    lightrag_chunk_top_k?: number;
+    lightrag_max_entity_tokens?: number;
+    lightrag_max_relation_tokens?: number;
+    lightrag_max_total_tokens?: number;
+    lightrag_enable_rerank?: boolean;
+    lightrag_include_references?: boolean;
+    lightrag_stream?: boolean;
     
     // Legacy n8n fields (deprecated)
     n8nLoginWebhookUrl: string | null;
