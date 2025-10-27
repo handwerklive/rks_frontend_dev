@@ -255,7 +255,7 @@ const App: React.FC = () => {
         setView(View.CHAT);
     };
 
-    // Backend API Message Handler
+    // Backend API Message Handler with Streaming
     const handleSendMessage = async (chatId: number, messageContent: string, useDocuments: boolean, attachment: { mimeType: string; data: string } | null = null) => {
         const chatBeforeUpdate = chatSessions.find(cs => cs.id === chatId);
         if (!chatBeforeUpdate) return;
@@ -272,19 +272,10 @@ const App: React.FC = () => {
         setIsLoadingTimeout(false);
         setLoadingStatus('Verarbeite Anfrage...');
         
-        // Set timeout indicator after 90 seconds (before the 120s API timeout)
+        // Set timeout indicator after 90 seconds
         const timeoutTimer = setTimeout(() => {
             setIsLoadingTimeout(true);
         }, 90000);
-        
-        // Simulate status updates (will be replaced by actual backend updates)
-        const statusInterval = setInterval(() => {
-            setLoadingStatus(prev => {
-                if (prev === 'Verarbeite Anfrage...') return 'Analysiere Anfrage...';
-                if (prev === 'Analysiere Anfrage...') return 'Generiere Antwort...';
-                return prev;
-            });
-        }, 2000);
 
         try {
             // Optimistically add user message to UI
@@ -299,48 +290,129 @@ const App: React.FC = () => {
                 finalMessageContent = `Beantworte die folgende Frage des Nutzers ausschließlich auf Basis des nachfolgenden Kontexts aus den bereitgestellten Dokumenten. Wenn die Antwort nicht im Kontext zu finden ist, weise den Nutzer klar darauf hin.\n\n### KONTEXT ###\n${filesContext}\n\n### FRAGE ###\n${messageContent}`;
             }
 
-            // Send message via Backend API
-            const response = await chatsAPI.sendMessage({
-                message: finalMessageContent,
-                chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId, // If temp ID, create new chat
-                vorlage_id: chatBeforeUpdate.vorlage_id,
-                attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
+            // Prepare streaming request
+            const token = localStorage.getItem('access_token');
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+            
+            const response = await fetch(`${API_BASE_URL}/api/chats/message/stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message: finalMessageContent,
+                    chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId,
+                    vorlage_id: chatBeforeUpdate.vorlage_id,
+                    attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
+                })
             });
-            
-            // Update status based on backend response
-            if (response.status_log && response.status_log.length > 0) {
-                // Display the last status from backend
-                const lastStatus = response.status_log[response.status_log.length - 1];
-                setLoadingStatus(lastStatus);
-            }
-            
-            // Update chat ID if it was newly created
-            if (response.chat_id !== chatId) {
-                setChatSessions(prev => prev.map(cs => 
-                    cs.id === chatId ? { ...cs, id: response.chat_id } : cs
-                ));
-                setCurrentChatId(response.chat_id);
-            }
-            
-            // Add AI response to messages
-            const modelMessage: Message = {
-                id: response.message_id,
-                role: 'model',
-                content: response.response,
-                timestamp: new Date().toISOString(),
-                attachment: null,
-            };
 
-            setChatSessions(prev => prev.map(cs => 
-                cs.id === response.chat_id ? { ...cs, messages: [...cs.messages, modelMessage] } : cs
-            ));
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            
+            let streamedContent = '';
+            let aiMessageId = `ai-${Date.now()}`;
+            let actualChatId = chatId;
+            let isFirstChunk = true;
+
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                switch (data.type) {
+                                    case 'status':
+                                        setLoadingStatus(data.message);
+                                        break;
+                                    
+                                    case 'chat_id':
+                                        actualChatId = data.chat_id;
+                                        setChatSessions(prev => prev.map(cs => 
+                                            cs.id === chatId ? { ...cs, id: actualChatId } : cs
+                                        ));
+                                        setCurrentChatId(actualChatId);
+                                        break;
+                                    
+                                    case 'content':
+                                        streamedContent += data.content;
+                                        
+                                        if (isFirstChunk) {
+                                            // Add initial AI message
+                                            const initialMessage: Message = {
+                                                id: aiMessageId,
+                                                role: 'model',
+                                                content: streamedContent,
+                                                timestamp: new Date().toISOString(),
+                                                attachment: null,
+                                            };
+                                            setChatSessions(prev => prev.map(cs => 
+                                                cs.id === actualChatId ? { ...cs, messages: [...cs.messages, initialMessage] } : cs
+                                            ));
+                                            isFirstChunk = false;
+                                        } else {
+                                            // Update existing AI message
+                                            setChatSessions(prev => prev.map(cs => 
+                                                cs.id === actualChatId ? {
+                                                    ...cs,
+                                                    messages: cs.messages.map(msg => 
+                                                        msg.id === aiMessageId ? { ...msg, content: streamedContent } : msg
+                                                    )
+                                                } : cs
+                                            ));
+                                        }
+                                        break;
+                                    
+                                    case 'done':
+                                        aiMessageId = data.message_id;
+                                        // Update final message ID
+                                        setChatSessions(prev => prev.map(cs => 
+                                            cs.id === actualChatId ? {
+                                                ...cs,
+                                                messages: cs.messages.map(msg => 
+                                                    msg.id === `ai-${Date.now()}` || msg.content === streamedContent ? 
+                                                        { ...msg, id: aiMessageId } : msg
+                                                )
+                                            } : cs
+                                        ));
+                                        break;
+                                    
+                                    case 'title':
+                                        // Update chat title
+                                        setChatSessions(prev => prev.map(cs => 
+                                            cs.id === actualChatId ? { ...cs, title: data.title } : cs
+                                        ));
+                                        break;
+                                    
+                                    case 'error':
+                                        throw new Error(data.message);
+                                }
+                            } catch (parseError) {
+                                console.error('Error parsing SSE data:', parseError);
+                            }
+                        }
+                    }
+                }
+            }
 
         } catch (error: any) {
             console.error('Error sending message:', error);
             const errorMessage: Message = {
                 id: `error-${Date.now()}`,
                 role: 'model',
-                content: `Entschuldigung, es ist ein Fehler aufgetreten: ${error.response?.data?.detail || error.message || 'Unbekannter Fehler'}`,
+                content: `Entschuldigung, es ist ein Fehler aufgetreten: ${error.message || 'Unbekannter Fehler'}`,
                 timestamp: new Date().toISOString(),
                 attachment: null,
             };
@@ -349,7 +421,6 @@ const App: React.FC = () => {
             ));
         } finally {
             clearTimeout(timeoutTimer);
-            clearInterval(statusInterval);
             setIsLoading(false);
             setLoadingStatus('Verarbeite Anfrage...');
             setIsLoadingTimeout(false);
