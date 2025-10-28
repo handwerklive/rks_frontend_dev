@@ -7,7 +7,6 @@ import EnterIcon from './icons/EnterIcon';
 import CopyIcon from './icons/CopyIcon';
 import CheckIcon from './icons/CheckIcon';
 import ChatIcon from './icons/ChatIcon';
-import MicrophoneIcon from './icons/MicrophoneIcon';
 import ReplyIcon from './icons/ReplyIcon';
 
 // Props interface based on App.tsx usage
@@ -430,16 +429,6 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                     </div>
                 )}
                 <div className="flex items-end gap-1.5 sm:gap-2">
-                    {/* Mikrofon-Button links */}
-                    <button 
-                        onClick={handleToggleListening} 
-                        className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-[var(--primary-color)] active:scale-95 transition-all relative bg-gray-100 rounded-full border border-gray-300 shadow-sm" 
-                        aria-label="Spracheingabe"
-                    >
-                        <MicrophoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                        {isListening && <span className="absolute inset-0 bg-red-500 rounded-full opacity-75 animate-ping"></span>}
-                    </button>
-
                     {/* Textarea mittig - wächst flexibel */}
                     <div className="flex-1 bg-gray-100 rounded-2xl border border-gray-300 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary-color)] focus-within:border-transparent transition-all min-w-0">
                         <textarea
