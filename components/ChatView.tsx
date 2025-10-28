@@ -230,17 +230,20 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
         const referencesContent = hasReferences ? contentWithoutReply.substring(referenzenIndex).trim() : '';
 
         const handleCopy = async (mode: 'plain' | 'markdown' = 'plain') => {
+            // Get content without "Antwort auf:" and "Referenzen:"
+            const contentToCopy = mainContent;
+            
             try {
                 if (mode === 'markdown' && 'clipboard' in navigator && 'write' in navigator.clipboard) {
-                    const html = parseMarkdown(msg.content);
+                    const html = parseMarkdown(contentToCopy);
                     const item = new ClipboardItem({
-                        'text/plain': new Blob([msg.content], { type: 'text/plain' }),
-                        'text/markdown': new Blob([msg.content], { type: 'text/markdown' }),
+                        'text/plain': new Blob([contentToCopy], { type: 'text/plain' }),
+                        'text/markdown': new Blob([contentToCopy], { type: 'text/markdown' }),
                         'text/html': new Blob([html], { type: 'text/html' }),
                     });
                     await (navigator.clipboard as any).write([item]);
                 } else {
-                    await navigator.clipboard.writeText(msg.content);
+                    await navigator.clipboard.writeText(contentToCopy);
                 }
                 setCopied(true);
                 setShowCopyMenu(false);
@@ -248,7 +251,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
             } catch (e) {
                 // Fallback in case ClipboardItem is not supported
                 try {
-                    await navigator.clipboard.writeText(msg.content);
+                    await navigator.clipboard.writeText(contentToCopy);
                     setCopied(true);
                     setShowCopyMenu(false);
                     setTimeout(() => setCopied(false), 2000);
