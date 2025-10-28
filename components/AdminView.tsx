@@ -32,7 +32,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const [lightragUrl, setLightragUrl] = useState('https://rks-lightrag.root.handwerker-bot.de/query/data');
   const [lightragApiKey, setLightragApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
-  const [lightragMode, setLightragMode] = useState<'local' | 'global' | 'hybrid' | 'mix'>('hybrid');
+  const [lightragMode, setLightragMode] = useState<'local' | 'global' | 'hybrid' | 'mix' | 'naive' | 'bypass'>('mix');
   const [lightragTopK, setLightragTopK] = useState(10);
   const [lightragChunkTopK, setLightragChunkTopK] = useState(5);
   const [lightragMaxEntityTokens, setLightragMaxEntityTokens] = useState(4000);
@@ -65,7 +65,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     setLightragEnabled(settings.lightrag_enabled || false);
     setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query/data');
     setLightragApiKey(settings.lightrag_api_key || '');
-    setLightragMode(settings.lightrag_mode || 'hybrid');
+    setLightragMode(settings.lightrag_mode || 'mix');
     setLightragTopK(settings.lightrag_top_k || 10);
     setLightragChunkTopK(settings.lightrag_chunk_top_k || 5);
     setLightragMaxEntityTokens(settings.lightrag_max_entity_tokens || 4000);
@@ -569,11 +569,16 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                   disabled={!lightragEnabled}
                   className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="local">Local - Nur lokale Entitäten</option>
-                  <option value="global">Global - Nur globale Beziehungen</option>
-                  <option value="hybrid">Hybrid - Kombiniert local und global</option>
-                  <option value="mix">Mix - Gemischte Strategie</option>
+                  <option value="mix">Mix - Integriert Knowledge Graph mit Vector Search (Empfohlen) ⭐</option>
+                  <option value="hybrid">Hybrid - Kombiniert Local und Global</option>
+                  <option value="local">Local - Nur lokale Entitäten und Beziehungen</option>
+                  <option value="global">Global - Nur globale Beziehungsmuster</option>
+                  <option value="naive">Naive - Nur Vector-basierte Textsuche (kein Knowledge Graph)</option>
+                  <option value="bypass">Bypass - Leere Daten (für direkte LLM-Queries)</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  <strong>Mix</strong> ist optimal für Handwerker-Fragen. <strong>Naive</strong> für reine Textsuche. <strong>Bypass</strong> überspringt die Wissensdatenbank.
+                </p>
               </div>
 
               {/* Number Inputs in Grid */}
