@@ -83,9 +83,15 @@ export interface Settings {
     // Global Settings (Admin)
     globalSystemPrompt?: string;
     
+    // AI Provider Configuration (Admin)
+    ai_provider?: 'openai' | 'anthropic';
+    
     // OpenAI Configuration (Admin)
     openai_model?: string;
     streaming_enabled?: boolean;
+    
+    // Anthropic Configuration (Admin)
+    anthropic_model?: string;
     
     // LightRAG Configuration (Admin)
     lightrag_enabled?: boolean;

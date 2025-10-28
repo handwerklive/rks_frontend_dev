@@ -20,9 +20,11 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'logs'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Global Settings
+  // Global Settings State
   const [globalSystemPrompt, setGlobalSystemPrompt] = useState('');
+  const [aiProvider, setAiProvider] = useState<'openai' | 'anthropic'>('openai');
   const [openaiModel, setOpenaiModel] = useState('gpt-5-nano');
+  const [anthropicModel, setAnthropicModel] = useState('claude-sonnet-4-5-20250929');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   
   // LightRAG Settings
@@ -56,7 +58,9 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
 
   useEffect(() => {
     setGlobalSystemPrompt(settings.globalSystemPrompt || '');
+    setAiProvider(settings.ai_provider || 'openai');
     setOpenaiModel(settings.openai_model || 'gpt-5-nano');
+    setAnthropicModel(settings.anthropic_model || 'claude-sonnet-4-5-20250929');
     setStreamingEnabled(settings.streaming_enabled !== undefined ? settings.streaming_enabled : true);
     setLightragEnabled(settings.lightrag_enabled || false);
     setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query');
@@ -77,13 +81,17 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     try {
       await settingsAPI.updateGlobal({ 
         global_system_prompt: globalSystemPrompt,
+        ai_provider: aiProvider,
         openai_model: openaiModel,
+        anthropic_model: anthropicModel,
         streaming_enabled: streamingEnabled,
       });
       // Also update local state
       onUpdateSettings({ 
         globalSystemPrompt: globalSystemPrompt,
+        ai_provider: aiProvider,
         openai_model: openaiModel,
+        anthropic_model: anthropicModel,
         streaming_enabled: streamingEnabled,
       });
       setSaveSuccess(true);
@@ -321,13 +329,32 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
           <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view">
             <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
               <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-                Der globale System-Prompt und das OpenAI-Modell werden in allen Chats verwendet, außer wenn eine Vorlage mit eigenem System-Prompt ausgewählt ist.
+                Der globale System-Prompt und das AI-Modell werden in allen Chats verwendet, außer wenn eine Vorlage mit eigenem System-Prompt ausgewählt ist.
               </div>
 
               <div>
-                <label htmlFor="openaiModel" className="block text-sm font-medium text-gray-600 mb-2">
-                  OpenAI Modell
+                <label htmlFor="aiProvider" className="block text-sm font-medium text-gray-600 mb-2">
+                  AI Provider
                 </label>
+                <select
+                  id="aiProvider"
+                  value={aiProvider}
+                  onChange={(e) => setAiProvider(e.target.value as 'openai' | 'anthropic')}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                >
+                  <option value="openai">OpenAI (GPT-4, GPT-5, o1, o3, o4)</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Wähle den AI-Provider für alle Chats. Stelle sicher, dass der entsprechende API-Key in der .env-Datei konfiguriert ist.
+                </p>
+              </div>
+
+              {aiProvider === 'openai' && (
+                <div>
+                  <label htmlFor="openaiModel" className="block text-sm font-medium text-gray-600 mb-2">
+                    OpenAI Modell
+                  </label>
                 <select
                   id="openaiModel"
                   value={openaiModel}
@@ -382,7 +409,43 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                   <strong>Reasoning:</strong> o-Serie für komplexe Problemlösung und Deep Research<br/>
                   <strong>Hinweis:</strong> Nur Text-Modelle. Cached Input und Batch/Flex/Priority-Preise können abweichen
                 </p>
-              </div>
+                </div>
+              )}
+
+              {aiProvider === 'anthropic' && (
+                <div>
+                  <label htmlFor="anthropicModel" className="block text-sm font-medium text-gray-600 mb-2">
+                    Anthropic Claude Modell
+                  </label>
+                  <select
+                    id="anthropicModel"
+                    value={anthropicModel}
+                    onChange={(e) => setAnthropicModel(e.target.value)}
+                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                  >
+                    <optgroup label="Claude 4.5 (Neueste Generation - 2025)">
+                      <option value="claude-sonnet-4-5-20250929">claude-sonnet-4-5 - Beste Coding & Reasoning - $3.00 / $15.00 ⭐</option>
+                      <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 - Schnellstes Modell - $1.00 / $5.00 🚀</option>
+                    </optgroup>
+                    <optgroup label="Claude 3.5 (Bewährt)">
+                      <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 - Sonnet Oktober - $3.00 / $15.00</option>
+                      <option value="claude-3-5-sonnet-20240620">claude-3-5-sonnet-20240620 - Sonnet Juni - $3.00 / $15.00</option>
+                      <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 - Haiku 3.5 - $1.00 / $5.00</option>
+                    </optgroup>
+                    <optgroup label="Claude 3 (Legacy)">
+                      <option value="claude-3-opus-20240229">claude-3-opus-20240229 - Höchste Qualität - $15.00 / $75.00</option>
+                      <option value="claude-3-sonnet-20240229">claude-3-sonnet-20240229 - Ausgewogen - $3.00 / $15.00</option>
+                      <option value="claude-3-haiku-20240307">claude-3-haiku-20240307 - Schnell - $0.25 / $1.25</option>
+                    </optgroup>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    <strong>Preise:</strong> Input / Output pro 1M Tokens<br/>
+                    <strong>⭐ Empfohlen:</strong> claude-sonnet-4-5 für beste Coding & Reasoning Performance<br/>
+                    <strong>🚀 Schnellste:</strong> claude-haiku-4-5 - 4-5x schneller als Sonnet 4.5<br/>
+                    <strong>Hinweis:</strong> Claude-Modelle haben 200K Token Context Window
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="flex items-center gap-3 cursor-pointer">
