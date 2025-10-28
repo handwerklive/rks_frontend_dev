@@ -29,7 +29,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   
   // LightRAG Settings
   const [lightragEnabled, setLightragEnabled] = useState(false);
-  const [lightragUrl, setLightragUrl] = useState('https://rks-lightrag.root.handwerker-bot.de/query');
+  const [lightragUrl, setLightragUrl] = useState('https://rks-lightrag.root.handwerker-bot.de/query/data');
   const [lightragApiKey, setLightragApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [lightragMode, setLightragMode] = useState<'local' | 'global' | 'hybrid' | 'mix'>('hybrid');
@@ -63,7 +63,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     setAnthropicModel(settings.anthropic_model || 'claude-sonnet-4-5-20250929');
     setStreamingEnabled(settings.streaming_enabled !== undefined ? settings.streaming_enabled : true);
     setLightragEnabled(settings.lightrag_enabled || false);
-    setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query');
+    setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query/data');
     setLightragApiKey(settings.lightrag_api_key || '');
     setLightragMode(settings.lightrag_mode || 'hybrid');
     setLightragTopK(settings.lightrag_top_k || 10);
