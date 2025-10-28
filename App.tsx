@@ -53,6 +53,24 @@ const App: React.FC = () => {
         }
     }, [user]);
 
+    // Load branding settings on app start
+    useEffect(() => {
+        const loadBrandingSettings = async () => {
+            try {
+                const globalSettings = await settingsAPI.getGlobal();
+                if (globalSettings.primary_color) {
+                    document.documentElement.style.setProperty('--primary-color', globalSettings.primary_color);
+                }
+                if (globalSettings.secondary_color) {
+                    document.documentElement.style.setProperty('--secondary-color', globalSettings.secondary_color);
+                }
+            } catch (error) {
+                console.error('Error loading branding settings:', error);
+            }
+        };
+        loadBrandingSettings();
+    }, []);
+
     // Navigation Handler
     const handleNavigate = async (targetView: View, event?: React.MouseEvent, data?: any) => {
         event?.preventDefault();
@@ -80,7 +98,18 @@ const App: React.FC = () => {
                     lightrag_enable_rerank: globalSettings.lightrag_enable_rerank,
                     lightrag_include_references: globalSettings.lightrag_include_references,
                     lightrag_stream: globalSettings.lightrag_stream,
+                    primary_color: globalSettings.primary_color,
+                    secondary_color: globalSettings.secondary_color,
+                    logo_url: globalSettings.logo_url,
                 });
+                
+                // Apply branding colors to CSS variables
+                if (globalSettings.primary_color) {
+                    document.documentElement.style.setProperty('--primary-color', globalSettings.primary_color);
+                }
+                if (globalSettings.secondary_color) {
+                    document.documentElement.style.setProperty('--secondary-color', globalSettings.secondary_color);
+                }
             } catch (error: any) {
                 console.error('Error loading global settings:', error);
                 // Continue to admin view even if settings fail to load

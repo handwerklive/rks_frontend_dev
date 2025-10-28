@@ -17,7 +17,7 @@ interface AdminViewProps {
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, onLogout, settings, onUpdateSettings }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'branding' | 'logs'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Global Settings State
@@ -41,6 +41,11 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const [lightragEnableRerank, setLightragEnableRerank] = useState(false);
   const [lightragIncludeReferences, setLightragIncludeReferences] = useState(false);
   const [lightragStream, setLightragStream] = useState(false);
+  
+  // Branding Settings
+  const [primaryColor, setPrimaryColor] = useState('#59B4E2');
+  const [secondaryColor, setSecondaryColor] = useState('#62B04A');
+  const [logoUrl, setLogoUrl] = useState('/rks-logo.svg');
   
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,6 +79,9 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     setLightragEnableRerank(settings.lightrag_enable_rerank || false);
     setLightragIncludeReferences(settings.lightrag_include_references || false);
     setLightragStream(settings.lightrag_stream || false);
+    setPrimaryColor(settings.primary_color || '#59B4E2');
+    setSecondaryColor(settings.secondary_color || '#62B04A');
+    setLogoUrl(settings.logo_url || '/rks-logo.svg');
   }, [settings]);
 
   const handleSaveGlobalSettings = async () => {
@@ -163,6 +171,29 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
       const newStatus = currentStatus === UserStatus.ACTIVE ? UserStatus.PENDING : UserStatus.ACTIVE;
       await onUpdateUser(userId, { status: newStatus });
       setUpdatingUserId(null);
+  };
+
+  const handleSaveBrandingSettings = async () => {
+    setIsSaving(true);
+    try {
+      await settingsAPI.updateGlobal({ 
+        primary_color: primaryColor,
+        secondary_color: secondaryColor,
+        logo_url: logoUrl,
+      });
+      
+      // Update CSS variables immediately
+      document.documentElement.style.setProperty('--primary-color', primaryColor);
+      document.documentElement.style.setProperty('--secondary-color', secondaryColor);
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('Error saving branding settings:', error);
+      alert('Fehler beim Speichern: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   // Load logs when logs tab is active
@@ -275,6 +306,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
               <TabButton tabId="users" label="Benutzer" icon={<UserIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
               <TabButton tabId="global" label="System" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
               <TabButton tabId="lightrag" label="LightRAG" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
+              <TabButton tabId="branding" label="Branding" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
               <TabButton tabId="logs" label="Logs" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
           </div>
       </div>
@@ -706,6 +738,148 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                   className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'LightRAG-Einstellungen Speichern'}
+                </button>
+            </div>
+          </div>
+      )}
+
+      {activeTab === 'branding' && (
+          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-6">
+              <div className="p-3 rounded-md bg-purple-50 border border-purple-200 text-sm text-purple-800">
+                Passen Sie das Erscheinungsbild der App an. Änderungen werden sofort nach dem Speichern für alle Benutzer sichtbar.
+              </div>
+
+              {/* Color Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Farbschema</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Primary Color */}
+                  <div>
+                    <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-2">
+                      Primärfarbe
+                    </label>
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="color"
+                        id="primaryColor"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        placeholder="#59B4E2"
+                        pattern="^#[0-9A-Fa-f]{6}$"
+                        className="flex-1 bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all font-mono"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Wird für Buttons, Links und Akzente verwendet</p>
+                  </div>
+
+                  {/* Secondary Color */}
+                  <div>
+                    <label htmlFor="secondaryColor" className="block text-sm font-medium text-gray-700 mb-2">
+                      Sekundärfarbe
+                    </label>
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="color"
+                        id="secondaryColor"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        className="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={secondaryColor}
+                        onChange={(e) => setSecondaryColor(e.target.value)}
+                        placeholder="#62B04A"
+                        pattern="^#[0-9A-Fa-f]{6}$"
+                        className="flex-1 bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all font-mono"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Wird für Gradienten und Hover-Effekte verwendet</p>
+                  </div>
+                </div>
+
+                {/* Color Preview */}
+                <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Vorschau:</p>
+                  <div className="flex flex-wrap gap-3">
+                    <div 
+                      className="px-6 py-3 rounded-lg text-white font-semibold shadow-sm"
+                      style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}
+                    >
+                      Gradient Button
+                    </div>
+                    <div 
+                      className="w-12 h-12 rounded-full shadow-md"
+                      style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}
+                    />
+                    <div 
+                      className="px-4 py-2 rounded-lg border-2"
+                      style={{ borderColor: primaryColor, color: primaryColor }}
+                    >
+                      Primärfarbe
+                    </div>
+                    <div 
+                      className="px-4 py-2 rounded-lg border-2"
+                      style={{ borderColor: secondaryColor, color: secondaryColor }}
+                    >
+                      Sekundärfarbe
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Logo Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Logo</h3>
+                
+                <div>
+                  <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                    Logo URL
+                  </label>
+                  <input
+                    type="text"
+                    id="logoUrl"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="/rks-logo.svg"
+                    className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Pfad zum Logo (z.B. /logo.svg oder https://example.com/logo.png)</p>
+                </div>
+
+                {/* Logo Preview */}
+                {logoUrl && (
+                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Logo-Vorschau:</p>
+                    <div className="flex items-center justify-center p-4 bg-white rounded-lg">
+                      <img 
+                        src={logoUrl} 
+                        alt="Logo Preview" 
+                        className="max-h-16 max-w-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = '<p class="text-sm text-red-600">Logo konnte nicht geladen werden</p>';
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                  onClick={handleSaveBrandingSettings}
+                  disabled={isSaving}
+                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'Branding-Einstellungen Speichern'}
                 </button>
             </div>
           </div>

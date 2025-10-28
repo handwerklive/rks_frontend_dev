@@ -108,6 +108,11 @@ export interface Settings {
     lightrag_include_references?: boolean;
     lightrag_stream?: boolean;
     
+    // Branding Configuration (Admin)
+    primary_color?: string;
+    secondary_color?: string;
+    logo_url?: string;
+    
     // Legacy n8n fields (deprecated)
     n8nLoginWebhookUrl: string | null;
     n8nGetUserWebhookUrl: string | null;

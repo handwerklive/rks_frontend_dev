@@ -6,7 +6,7 @@ import EnterIcon from './icons/EnterIcon';
 // import PaperclipIcon from './icons/PaperclipIcon';
 import CopyIcon from './icons/CopyIcon';
 import CheckIcon from './icons/CheckIcon';
-import HardHatIcon from './icons/HardHatIcon';
+import ChatIcon from './icons/ChatIcon';
 import MicrophoneIcon from './icons/MicrophoneIcon';
 import ReplyIcon from './icons/ReplyIcon';
 
@@ -214,14 +214,20 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
         const [copied, setCopied] = useState(false);
         const [showCopyMenu, setShowCopyMenu] = useState(false);
         const isUser = msg.role === 'user';
-        const bgColor = isUser ? 'bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)]' : 'bg-white border border-gray-200';
-        const textColor = isUser ? 'text-white' : 'text-gray-800';
+        const bgColor = isUser ? 'bg-white border-2' : 'bg-white border border-gray-200';
+        const borderStyle = isUser ? 'border-gradient' : '';
+        const textColor = 'text-gray-800';
+
+        // Extract "Antwort auf:" if it exists
+        const replyMatch = msg.content.match(/^\[Antwort auf: "(.+?)"\]\n\n/);
+        const replyToContent = replyMatch ? replyMatch[1] : null;
+        let contentWithoutReply = replyMatch ? msg.content.substring(replyMatch[0].length) : msg.content;
 
         // Split content at "Referenzen:" if it exists
-        const referenzenIndex = msg.content.indexOf('Referenzen:');
+        const referenzenIndex = contentWithoutReply.indexOf('Referenzen:');
         const hasReferences = referenzenIndex !== -1;
-        const mainContent = hasReferences ? msg.content.substring(0, referenzenIndex).trim() : msg.content;
-        const referencesContent = hasReferences ? msg.content.substring(referenzenIndex).trim() : '';
+        const mainContent = hasReferences ? contentWithoutReply.substring(0, referenzenIndex).trim() : contentWithoutReply;
+        const referencesContent = hasReferences ? contentWithoutReply.substring(referenzenIndex).trim() : '';
 
         const handleCopy = async (mode: 'plain' | 'markdown' = 'plain') => {
             try {
@@ -257,14 +263,23 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 {/* Main message bubble */}
                 <div className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'justify-end' : ''} px-2 sm:px-0`}>
                     {!isUser && (
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
-                            <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
+                            <ChatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
                     )}
-                    <div className={`group relative max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0`}>
+                    <div className={`group relative max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0 ${isUser ? 'gradient-border' : ''}`}>
                         {msg.attachment && msg.attachment.type === 'image' && (
                             <div className="mb-2">
                                  <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg w-full max-w-xs max-h-64 object-contain bg-black/10" />
+                            </div>
+                        )}
+                        {replyToContent && (
+                            <div className="mb-2 p-2 rounded-lg border-l-4 flex items-start gap-2 text-xs bg-blue-50 border-blue-400">
+                                <ReplyIcon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-blue-600" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium mb-0.5 text-blue-700">Antwort auf:</div>
+                                    <div className="truncate text-gray-700">{replyToContent}</div>
+                                </div>
                             </div>
                         )}
                         <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere word-break">
@@ -331,7 +346,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 {isLoading && (
                     <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0">
                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
-                            <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                            <ChatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
                         <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm transition-all duration-500">
                             {!isLoadingTimeout ? (
