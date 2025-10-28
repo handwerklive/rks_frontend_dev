@@ -252,7 +252,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                             <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
                         </div>
                     )}
-                    <div className={`group relative max-w-[85%] sm:max-w-[75%] md:max-w-lg p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0`}>
+                    <div className={`group relative max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0`}>
                         {msg.attachment && msg.attachment.type === 'image' && (
                             <div className="mb-2">
                                  <img src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} alt="attachment" className="rounded-lg w-full max-w-xs max-h-64 object-contain bg-black/10" />
@@ -283,7 +283,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 {hasReferences && !isUser && (
                     <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0 mt-2">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0"></div>
-                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-lg p-2.5 sm:p-3 rounded-2xl shadow-sm bg-gray-50 border border-gray-300 text-gray-700 min-w-0">
+                        <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-2.5 sm:p-3 rounded-2xl shadow-sm bg-gray-50 border border-gray-300 text-gray-700 min-w-0">
                             <div className="whitespace-pre-wrap break-words text-xs sm:text-sm font-mono">
                                 {referencesContent}
                             </div>
@@ -313,7 +313,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
                             <HardHatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
-                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-lg p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm transition-all duration-500">
+                        <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm transition-all duration-500">
                             {!isLoadingTimeout ? (
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex-shrink-0">
