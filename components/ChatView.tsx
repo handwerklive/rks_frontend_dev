@@ -8,6 +8,7 @@ import CopyIcon from './icons/CopyIcon';
 import CheckIcon from './icons/CheckIcon';
 import HardHatIcon from './icons/HardHatIcon';
 import MicrophoneIcon from './icons/MicrophoneIcon';
+import ReplyIcon from './icons/ReplyIcon';
 
 // Props interface based on App.tsx usage
 interface ChatViewProps {
@@ -27,6 +28,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     const [message, setMessage] = useState('');
     const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
     const [isListening, setIsListening] = useState(false);
+    const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -169,9 +171,16 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     const handleSend = () => {
         if (isLoading) return;
         if (message.trim() || attachment) {
-            onSendMessage(chatSession.id, message, false, attachment);
+            // Wenn eine Nachricht referenziert wird, füge die Referenz zur Nachricht hinzu
+            let messageToSend = message;
+            if (replyToMessage) {
+                messageToSend = `[Antwort auf: "${replyToMessage.content.substring(0, 100)}${replyToMessage.content.length > 100 ? '...' : ''}"]\n\n${message}`;
+            }
+            
+            onSendMessage(chatSession.id, messageToSend, false, attachment);
             setMessage('');
             setAttachment(null);
+            setReplyToMessage(null);
         }
     };
 
@@ -262,13 +271,24 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                             <MarkdownRenderer content={mainContent} />
                         </div>
                         {!isUser && msg.content && (
-                            <div className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                {/* Reply Button */}
+                                <button 
+                                    onClick={() => setReplyToMessage(msg)} 
+                                    className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 hover:scale-110 active:scale-95 transition-all" 
+                                    aria-label="Auf Nachricht antworten"
+                                    title="Antworten"
+                                >
+                                    <ReplyIcon className="w-4 h-4" />
+                                </button>
+                                
+                                {/* Copy Button */}
                                 <div className="relative">
                                     <button onClick={() => setShowCopyMenu(v => !v)} className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all" aria-label="Kopieroptionen">
                                         {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
                                     </button>
                                     {showCopyMenu && (
-                                        <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-xl shadow-xl p-1 w-44 animate-fade-in">
+                                        <div className="absolute bottom-10 right-0 bg-white border border-gray-200 rounded-xl shadow-xl p-1 w-44 animate-fade-in z-10">
                                             <button onClick={() => handleCopy('plain')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Text kopieren</button>
                                             <button onClick={() => handleCopy('markdown')} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Als Markdown kopieren</button>
                                         </div>
@@ -344,6 +364,18 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
             </div>
 
             <div className="p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
+                 {/* Reply Reference */}
+                 {replyToMessage && (
+                    <div className="mb-2 p-2 sm:p-3 bg-blue-50 rounded-xl border border-blue-200 flex items-start gap-2 text-xs sm:text-sm shadow-sm">
+                        <ReplyIcon className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <div className="font-medium text-blue-700 mb-1">Antwort auf:</div>
+                            <div className="text-gray-700 truncate">{replyToMessage.content.substring(0, 100)}{replyToMessage.content.length > 100 ? '...' : ''}</div>
+                        </div>
+                        <button onClick={() => setReplyToMessage(null)} className="text-blue-500 hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1 flex-shrink-0" aria-label="Referenz entfernen">&times;</button>
+                    </div>
+                )}
+                
                  {attachment && (
                     <div className="mb-2 p-2 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-between text-xs sm:text-sm shadow-sm">
                         <span className="truncate text-gray-700">{attachment.name}</span>

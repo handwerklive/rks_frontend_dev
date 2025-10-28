@@ -51,6 +51,7 @@ export interface Message {
   content: string;
   timestamp: string;
   attachment: Attachment | null;
+  reply_to?: string; // ID of the message being replied to
 }
 
 export interface ChatMessageResponse {
@@ -119,4 +120,14 @@ export interface Settings {
     n8nGetMessagesWebhookUrl: string | null;
     
     personalizationPrompt: string;
+}
+
+export interface UserSettings {
+  id: number;
+  user_id: string;
+  personal_system_prompt: string;
+  preferred_tone: 'professional' | 'casual' | 'formal' | 'friendly';
+  signature: string;
+  created_at: string;
+  updated_at: string;
 }

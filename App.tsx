@@ -5,6 +5,7 @@ import LoginView from './components/LoginView';
 import HomeView from './components/HomeView';
 import AdminView from './components/AdminView';
 import SettingsView from './components/SettingsView';
+import UserSettingsView from './components/UserSettingsView';
 import VorlagenListView from './components/SpacesListView';
 import VorlagenFormView from './components/SpaceFormView';
 import ChatListView from './components/ChatListView';
@@ -527,7 +528,7 @@ const App: React.FC = () => {
             case View.ADMIN:
                 return <AdminView users={users} onUpdateUser={updateUser} onNavigate={handleNavigate} onLogout={handleLogout} settings={settings} onUpdateSettings={updateSettings} />;
             case View.SETTINGS:
-                return <SettingsView settings={settings} onUpdateSettings={updateSettings} onNavigate={handleNavigate} onLogout={handleLogout} />;
+                return <UserSettingsView onNavigate={handleNavigate} apiBaseUrl={settings.apiBaseUrl} authToken={localStorage.getItem('access_token')} />;
             case View.VORLAGEN_LIST:
                 return <VorlagenListView vorlagen={vorlagen} onSelectVorlage={(id, e) => handleNavigate(View.CHAT_LIST, e, { vorlageId: id })} onNewVorlage={(e) => handleNavigate(View.VORLAGEN_FORM, e)} onEditVorlage={handleEditVorlage} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.VORLAGEN_FORM:

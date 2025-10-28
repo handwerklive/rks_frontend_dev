@@ -3,7 +3,7 @@ import { User, Vorlage, View, UserRole } from '../types';
 import Header from './Header';
 import LayersIcon from './icons/LayersIcon';
 import HistoryIcon from './icons/HistoryIcon';
-// Removed: FileTextIcon (Dokumente) and SettingsIcon (Einstellungen) since these entries are hidden for now
+import SettingsIcon from './icons/SettingsIcon';
 import UserIcon from './icons/UserIcon';
 import ChatIcon from './icons/ChatIcon';
 import StarIcon from './icons/StarIcon';
@@ -21,8 +21,7 @@ const HomeView: React.FC<HomeViewProps> = ({ user, vorlagen, onNavigate, onLogou
     const menuItems = [
         { view: View.VORLAGEN_LIST, label: 'Vorlagen', icon: <LayersIcon className="w-8 h-8"/>, description: "Alle Vorlagen durchsuchen und verwalten." },
         { view: View.CHAT_HISTORY, label: 'Chat-Verlauf', icon: <HistoryIcon className="w-8 h-8"/>, description: "Bisherige Konversationen ansehen." },
-        // { view: View.FILES, label: 'Dokumente', icon: <FileTextIcon className="w-8 h-8"/>, description: "Dateien als Kontext für Chats verwalten." },
-        // { view: View.SETTINGS, label: 'Einstellungen', icon: <SettingsIcon className="w-8 h-8"/>, description: "Persönliche App-Einstellungen anpassen." },
+        { view: View.SETTINGS, label: 'Meine Einstellungen', icon: <SettingsIcon className="w-8 h-8"/>, description: "Persönliche KI-Anweisungen und Präferenzen." },
     ];
 
     if (user.role === UserRole.ADMIN) {
