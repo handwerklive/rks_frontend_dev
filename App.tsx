@@ -107,16 +107,8 @@ const App: React.FC = () => {
                     app_title: globalSettings.app_title,
                 });
                 
-                // Apply branding to CSS variables and document title
-                if (globalSettings.primary_color) {
-                    document.documentElement.style.setProperty('--primary-color', globalSettings.primary_color);
-                }
-                if (globalSettings.secondary_color) {
-                    document.documentElement.style.setProperty('--secondary-color', globalSettings.secondary_color);
-                }
-                if (globalSettings.app_title) {
-                    document.title = globalSettings.app_title;
-                }
+                // Note: Branding (colors, title) are already applied on app start
+                // and updated immediately when saved in AdminView, so we don't need to reapply them here
             } catch (error: any) {
                 console.error('Error loading global settings:', error);
                 // Continue to admin view even if settings fail to load
