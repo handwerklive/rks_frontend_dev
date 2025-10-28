@@ -355,6 +355,10 @@ const App: React.FC = () => {
                                         streamedContent += data.content;
                                         
                                         if (isFirstChunk) {
+                                            // Remove loading state immediately when first content arrives
+                                            setIsLoading(false);
+                                            setLoadingStatus('');
+                                            
                                             // Add initial AI message
                                             const initialMessage: Message = {
                                                 id: aiMessageId,
@@ -460,11 +464,13 @@ const App: React.FC = () => {
             setChatSessions(prev => prev.map(cs => 
                 cs.id === chatId ? { ...cs, messages: [...cs.messages, errorMessage] } : cs
             ));
-        } finally {
-            clearTimeout(timeoutTimer);
+            // Only reset loading state on error
             setIsLoading(false);
             setLoadingStatus('Verarbeite Anfrage...');
+        } finally {
+            clearTimeout(timeoutTimer);
             setIsLoadingTimeout(false);
+            // Don't reset loading state here - it's already handled in the content case or error case
         }
     };
     
