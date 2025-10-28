@@ -45,7 +45,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   // Branding Settings
   const [primaryColor, setPrimaryColor] = useState('#59B4E2');
   const [secondaryColor, setSecondaryColor] = useState('#62B04A');
-  const [logoUrl, setLogoUrl] = useState('/rks-logo.svg');
+  const [logoUrl, setLogoUrl] = useState('https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png');
   
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,7 +81,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     setLightragStream(settings.lightrag_stream || false);
     setPrimaryColor(settings.primary_color || '#59B4E2');
     setSecondaryColor(settings.secondary_color || '#62B04A');
-    setLogoUrl(settings.logo_url || '/rks-logo.svg');
+    setLogoUrl(settings.logo_url || 'https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png');
   }, [settings]);
 
   const handleSaveGlobalSettings = async () => {
@@ -849,7 +849,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                     id="logoUrl"
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="/rks-logo.svg"
+                    placeholder="https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png"
                     className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
                   />
                   <p className="text-xs text-gray-500 mt-1">Pfad zum Logo (z.B. /logo.svg oder https://example.com/logo.png)</p>
