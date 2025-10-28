@@ -340,7 +340,13 @@ const App: React.FC = () => {
                                 
                                 switch (data.type) {
                                     case 'status':
-                                        setLoadingStatus(data.message);
+                                        if (data.message === '') {
+                                            // Empty status means stream has started, remove loading
+                                            setIsLoading(false);
+                                            setLoadingStatus('');
+                                        } else {
+                                            setLoadingStatus(data.message);
+                                        }
                                         break;
                                     
                                     case 'chat_id':
