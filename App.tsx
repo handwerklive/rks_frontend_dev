@@ -528,7 +528,7 @@ const App: React.FC = () => {
             case View.ADMIN:
                 return <AdminView users={users} onUpdateUser={updateUser} onNavigate={handleNavigate} onLogout={handleLogout} settings={settings} onUpdateSettings={updateSettings} />;
             case View.SETTINGS:
-                return <UserSettingsView onNavigate={handleNavigate} apiBaseUrl={settings.apiBaseUrl} authToken={localStorage.getItem('access_token')} />;
+                return <UserSettingsView onNavigate={handleNavigate} />;
             case View.VORLAGEN_LIST:
                 return <VorlagenListView vorlagen={vorlagen} onSelectVorlage={(id, e) => handleNavigate(View.CHAT_LIST, e, { vorlageId: id })} onNewVorlage={(e) => handleNavigate(View.VORLAGEN_FORM, e)} onEditVorlage={handleEditVorlage} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.VORLAGEN_FORM:

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, UserSettings } from '../types';
 import Header from './Header';
+import axios from 'axios';
 
 interface UserSettingsViewProps {
   onNavigate: (view: View) => void;
-  apiBaseUrl: string;
-  authToken: string | null;
 }
 
-const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate, apiBaseUrl, authToken }) => {
+const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [personalSystemPrompt, setPersonalSystemPrompt] = useState('');
   const [preferredTone, setPreferredTone] = useState<'professional' | 'casual' | 'formal' | 'friendly'>('professional');
   const [signature, setSignature] = useState('');
@@ -20,14 +20,15 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate, apiBase
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl}/api/user-settings`, {
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get(`${API_BASE_URL}/api/user-settings`, {
           headers: {
-            'Authorization': `Bearer ${authToken}`
+            'Authorization': `Bearer ${token}`
           }
         });
 
-        if (response.ok) {
-          const data: UserSettings = await response.json();
+        if (response.status === 200) {
+          const data: UserSettings = response.data;
           setPersonalSystemPrompt(data.personal_system_prompt || '');
           setPreferredTone(data.preferred_tone || 'professional');
           setSignature(data.signature || '');
@@ -40,30 +41,25 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate, apiBase
     };
 
     loadSettings();
-  }, [apiBaseUrl, authToken]);
+  }, [API_BASE_URL]);
 
   const handleSave = async () => {
     try {
       setSaveError('');
-      const response = await fetch(`${apiBaseUrl}/api/user-settings`, {
-        method: 'PATCH',
+      const token = localStorage.getItem('access_token');
+      const response = await axios.patch(`${API_BASE_URL}/api/user-settings`, {
+        personal_system_prompt: personalSystemPrompt,
+        preferred_tone: preferredTone,
+        signature: signature
+      }, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          personal_system_prompt: personalSystemPrompt,
-          preferred_tone: preferredTone,
-          signature: signature
-        })
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
-      } else {
-        const errorData = await response.json();
-        setSaveError(errorData.detail || 'Fehler beim Speichern');
       }
     } catch (error) {
       setSaveError('Netzwerkfehler beim Speichern');

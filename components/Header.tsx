@@ -7,8 +7,9 @@ import CloseIcon from './icons/CloseIcon';
 
 interface HeaderProps {
   title: string;
-  onLogout: () => void;
+  onLogout?: () => void;
   onNavigate?: (view: View, event: React.MouseEvent, data?: any) => void;
+  onBack?: () => void;
   showBackButton?: boolean;
   backTargetView?: View;
   backTargetData?: any;
@@ -18,16 +19,21 @@ interface HeaderProps {
   onClear?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title, onLogout, onNavigate, showBackButton = false, backTargetView = View.HOME, backTargetData, showCloseButton = false, onClose, showClearButton = false, onClear }) => {
+const Header: React.FC<HeaderProps> = ({ title, onLogout, onNavigate, onBack, showBackButton = false, backTargetView = View.HOME, backTargetData, showCloseButton = false, onClose, showClearButton = false, onClear }) => {
   const handleBackClick = (e: React.MouseEvent) => {
-    if (onNavigate) {
+    if (onBack) {
+      onBack();
+    } else if (onNavigate) {
       onNavigate(backTargetView, e, backTargetData);
     }
   };
+  
+  // Show back button if onBack is provided or showBackButton is true
+  const shouldShowBackButton = showBackButton || !!onBack;
 
   return (
     <header className="relative flex items-center justify-center p-2 sm:p-4 h-14 sm:h-16 bg-white border-b border-gray-200 shadow-sm flex-shrink-0 z-30">
-      {showBackButton && (
+      {shouldShowBackButton && (
         <button 
           onClick={handleBackClick}
           className="absolute top-1/2 left-2 sm:left-4 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
