@@ -21,7 +21,7 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
     const loadSettings = async () => {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await axios.get(`${API_BASE_URL}/api/user-settings`, {
+        const response = await axios.get(`${API_BASE_URL}api/user-settings`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -47,7 +47,7 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
     try {
       setSaveError('');
       const token = localStorage.getItem('access_token');
-      const response = await axios.patch(`${API_BASE_URL}/api/user-settings`, {
+      const response = await axios.patch(`${API_BASE_URL}api/user-settings`, {
         personal_system_prompt: personalSystemPrompt,
         preferred_tone: preferredTone,
         signature: signature
