@@ -58,6 +58,16 @@ const App: React.FC = () => {
         const loadBrandingSettings = async () => {
             try {
                 const globalSettings = await settingsAPI.getGlobal();
+                
+                // Update settings state with branding values
+                updateSettings({
+                    primary_color: globalSettings.primary_color,
+                    secondary_color: globalSettings.secondary_color,
+                    logo_url: globalSettings.logo_url,
+                    app_title: globalSettings.app_title,
+                });
+                
+                // Apply branding to CSS and document
                 if (globalSettings.primary_color) {
                     document.documentElement.style.setProperty('--primary-color', globalSettings.primary_color);
                 }
