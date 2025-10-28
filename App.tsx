@@ -64,6 +64,9 @@ const App: React.FC = () => {
                 if (globalSettings.secondary_color) {
                     document.documentElement.style.setProperty('--secondary-color', globalSettings.secondary_color);
                 }
+                if (globalSettings.app_title) {
+                    document.title = globalSettings.app_title;
+                }
             } catch (error) {
                 console.error('Error loading branding settings:', error);
             }
@@ -101,14 +104,18 @@ const App: React.FC = () => {
                     primary_color: globalSettings.primary_color,
                     secondary_color: globalSettings.secondary_color,
                     logo_url: globalSettings.logo_url,
+                    app_title: globalSettings.app_title,
                 });
                 
-                // Apply branding colors to CSS variables
+                // Apply branding to CSS variables and document title
                 if (globalSettings.primary_color) {
                     document.documentElement.style.setProperty('--primary-color', globalSettings.primary_color);
                 }
                 if (globalSettings.secondary_color) {
                     document.documentElement.style.setProperty('--secondary-color', globalSettings.secondary_color);
+                }
+                if (globalSettings.app_title) {
+                    document.title = globalSettings.app_title;
                 }
             } catch (error: any) {
                 console.error('Error loading global settings:', error);

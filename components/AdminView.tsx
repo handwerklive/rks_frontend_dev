@@ -46,6 +46,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const [primaryColor, setPrimaryColor] = useState('#59B4E2');
   const [secondaryColor, setSecondaryColor] = useState('#62B04A');
   const [logoUrl, setLogoUrl] = useState('https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png');
+  const [appTitle, setAppTitle] = useState('RKS Chatbot');
   
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,6 +83,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
     setPrimaryColor(settings.primary_color || '#59B4E2');
     setSecondaryColor(settings.secondary_color || '#62B04A');
     setLogoUrl(settings.logo_url || 'https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png');
+    setAppTitle(settings.app_title || 'RKS Chatbot');
   }, [settings]);
 
   const handleSaveGlobalSettings = async () => {
@@ -180,11 +182,13 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
         primary_color: primaryColor,
         secondary_color: secondaryColor,
         logo_url: logoUrl,
+        app_title: appTitle,
       });
       
-      // Update CSS variables immediately
+      // Update CSS variables and document title immediately
       document.documentElement.style.setProperty('--primary-color', primaryColor);
       document.documentElement.style.setProperty('--secondary-color', secondaryColor);
+      document.title = appTitle;
       
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -836,10 +840,26 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                 </div>
               </div>
 
-              {/* Logo Settings */}
+              {/* Logo & Title Settings */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Logo</h3>
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Logo & Titel</h3>
                 
+                <div>
+                  <label htmlFor="appTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                    App-Titel (Browser-Tab)
+                  </label>
+                  <input
+                    type="text"
+                    id="appTitle"
+                    value={appTitle}
+                    onChange={(e) => setAppTitle(e.target.value)}
+                    placeholder="RKS Chatbot"
+                    maxLength={100}
+                    className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Wird in der Browser-Leiste und als Tab-Titel angezeigt</p>
+                </div>
+
                 <div>
                   <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-2">
                     Logo URL

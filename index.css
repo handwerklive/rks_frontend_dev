@@ -147,20 +147,9 @@
   /* Gradient border for user messages */
   .gradient-border {
     position: relative;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(to bottom right, var(--primary-color), var(--secondary-color)) border-box;
     border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-  
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(to bottom right, var(--primary-color), var(--secondary-color));
-    border-radius: inherit;
-    z-index: -1;
   }
 }
 

@@ -112,6 +112,7 @@ export interface Settings {
     primary_color?: string;
     secondary_color?: string;
     logo_url?: string;
+    app_title?: string;
     
     // Legacy n8n fields (deprecated)
     n8nLoginWebhookUrl: string | null;
