@@ -151,5 +151,37 @@
                 linear-gradient(to bottom right, var(--primary-color), var(--secondary-color)) border-box;
     border: 2px solid transparent;
   }
+
+  /* Branding accent colors */
+  .accent-bg-light {
+    background-color: color-mix(in srgb, var(--primary-color) 10%, white);
+  }
+
+  .accent-bg-lighter {
+    background: linear-gradient(to bottom right, 
+      color-mix(in srgb, var(--primary-color) 8%, white), 
+      color-mix(in srgb, var(--secondary-color) 8%, white));
+  }
+
+  .accent-border {
+    border-color: color-mix(in srgb, var(--primary-color) 30%, white);
+  }
+
+  .accent-border-left {
+    border-left-color: var(--primary-color);
+  }
+
+  .accent-text {
+    color: var(--primary-color);
+  }
+
+  .accent-text-dark {
+    color: color-mix(in srgb, var(--primary-color) 80%, black);
+  }
+
+  .accent-spinner {
+    border-color: var(--primary-color);
+    border-top-color: transparent;
+  }
 }
 

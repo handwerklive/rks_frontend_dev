@@ -274,10 +274,10 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                             </div>
                         )}
                         {replyToContent && (
-                            <div className="mb-2 p-2 rounded-lg border-l-4 flex items-start gap-2 text-xs bg-blue-50 border-blue-400">
-                                <ReplyIcon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-blue-600" />
+                            <div className="mb-2 p-2 rounded-lg border-l-4 flex items-start gap-2 text-xs accent-bg-light accent-border-left">
+                                <ReplyIcon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 accent-text" />
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-medium mb-0.5 text-blue-700">Antwort auf:</div>
+                                    <div className="font-medium mb-0.5 accent-text-dark">Antwort auf:</div>
                                     <div className="truncate text-gray-700">{replyToContent}</div>
                                 </div>
                             </div>
@@ -290,7 +290,22 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                                 {/* Reply Button */}
                                 <button 
                                     onClick={() => setReplyToMessage(msg)} 
-                                    className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 hover:scale-110 active:scale-95 transition-all" 
+                                    className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:scale-110 active:scale-95 transition-all"
+                                    style={{
+                                        ['--tw-hover-bg' as any]: 'var(--primary-color)',
+                                        ['--tw-hover-text' as any]: 'var(--primary-color)',
+                                        ['--tw-hover-border' as any]: 'var(--primary-color)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--primary-color) 10%, white)';
+                                        e.currentTarget.style.color = 'var(--primary-color)';
+                                        e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--primary-color) 30%, white)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'white';
+                                        e.currentTarget.style.color = 'rgb(107, 114, 128)';
+                                        e.currentTarget.style.borderColor = 'rgb(229, 231, 235)';
+                                    }}
                                     aria-label="Auf Nachricht antworten"
                                     title="Antworten"
                                 >
@@ -299,7 +314,21 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                                 
                                 {/* Copy Button */}
                                 <div className="relative">
-                                    <button onClick={() => setShowCopyMenu(v => !v)} className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:scale-110 active:scale-95 transition-all" aria-label="Kopieroptionen">
+                                    <button 
+                                        onClick={() => setShowCopyMenu(v => !v)} 
+                                        className="w-8 h-8 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:scale-110 active:scale-95 transition-all"
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--primary-color) 10%, white)';
+                                            e.currentTarget.style.color = 'var(--primary-color)';
+                                            e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--primary-color) 30%, white)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'white';
+                                            e.currentTarget.style.color = 'rgb(107, 114, 128)';
+                                            e.currentTarget.style.borderColor = 'rgb(229, 231, 235)';
+                                        }}
+                                        aria-label="Kopieroptionen"
+                                    >
                                         {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <CopyIcon className="w-4 h-4" />}
                                     </button>
                                     {showCopyMenu && (
@@ -348,13 +377,13 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
                             <ChatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
-                        <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm transition-all duration-500">
+                        <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl accent-bg-lighter border accent-border shadow-sm transition-all duration-500">
                             {!isLoadingTimeout ? (
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex-shrink-0">
-                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                        <div className="w-4 h-4 border-2 accent-spinner rounded-full animate-spin"></div>
                                     </div>
-                                    <span className="text-sm font-medium text-blue-700">
+                                    <span className="text-sm font-medium accent-text-dark">
                                         {loadingStatus || 'Verarbeite Anfrage...'}
                                     </span>
                                 </div>
@@ -381,13 +410,13 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
             <div className="p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
                  {/* Reply Reference */}
                  {replyToMessage && (
-                    <div className="mb-2 p-2 sm:p-3 bg-blue-50 rounded-xl border border-blue-200 flex items-start gap-2 text-xs sm:text-sm shadow-sm">
-                        <ReplyIcon className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="mb-2 p-2 sm:p-3 accent-bg-light rounded-xl border accent-border flex items-start gap-2 text-xs sm:text-sm shadow-sm">
+                        <ReplyIcon className="w-4 h-4 accent-text flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                            <div className="font-medium text-blue-700 mb-1">Antwort auf:</div>
+                            <div className="font-medium accent-text-dark mb-1">Antwort auf:</div>
                             <div className="text-gray-700 truncate">{replyToMessage.content.substring(0, 100)}{replyToMessage.content.length > 100 ? '...' : ''}</div>
                         </div>
-                        <button onClick={() => setReplyToMessage(null)} className="text-blue-500 hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1 flex-shrink-0" aria-label="Referenz entfernen">&times;</button>
+                        <button onClick={() => setReplyToMessage(null)} className="accent-text hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1 flex-shrink-0" aria-label="Referenz entfernen">&times;</button>
                     </div>
                 )}
                 
