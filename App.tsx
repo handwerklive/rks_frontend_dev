@@ -271,6 +271,14 @@ const App: React.FC = () => {
         setChatSessions(prev => [newChat, ...prev]);
         setCurrentChatId(newChat.id);
         setView(View.CHAT);
+        
+        // Auto-start dialog mode if vorlage has dialog mode enabled
+        if (vorlage?.is_dialog_mode) {
+            // Send empty message to trigger dialog start
+            setTimeout(() => {
+                handleSendMessage(newChat.id, '', false, null);
+            }, 100);
+        }
     };
 
     const handleNewQuickChat = () => {
