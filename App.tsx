@@ -323,6 +323,7 @@ const App: React.FC = () => {
         setIsLoading(true);
         setIsLoadingTimeout(false);
         setLoadingStatus('Verarbeite Anfrage...');
+        setWaitingForInput(null); // Clear waiting indicator when user sends message
         
         // Set timeout indicator after 90 seconds
         const timeoutTimer = setTimeout(() => {
