@@ -266,11 +266,29 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
             <>
                 {/* Main message bubble */}
                 <div className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'justify-end' : ''} px-2 sm:px-0`}>
-                    {!isUser && (
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
-                            <ChatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                        </div>
-                    )}
+                    {!isUser && (() => {
+                        // Get primary color from CSS variable
+                        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#59B4E2';
+                        const avatarColors = getBotAvatarColors(primaryColor);
+                        
+                        return (
+                            <div 
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-md p-1"
+                                style={{ backgroundColor: 'var(--primary-color)' }}
+                            >
+                                <img 
+                                    src="/bot-avatar.svg" 
+                                    alt="Bot" 
+                                    className="w-full h-full object-contain"
+                                    style={{ 
+                                        filter: avatarColors.iconColor === 'white' 
+                                            ? 'brightness(0) invert(1)' 
+                                            : 'brightness(0)'
+                                    }}
+                                />
+                            </div>
+                        );
+                    })()}
                     <div className={`group relative max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-2.5 sm:p-3 rounded-2xl shadow-sm ${bgColor} ${textColor} min-w-0 ${isUser ? 'gradient-border' : ''}`}>
                         {msg.attachment && msg.attachment.type === 'image' && (
                             <div className="mb-2">
@@ -410,44 +428,19 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 )}
                 
                 {/* Waiting for Input Indicator (Dialog Mode) */}
-                {waitingForInput && (() => {
-                    const primaryColor = settings?.primary_color || '#59B4E2';
-                    const avatarColors = getBotAvatarColors(primaryColor);
-                    
-                    return (
-                        <div className="flex justify-start px-2 sm:px-4 pb-4 animate-fade-in">
-                            <div className="flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
-                                {/* Bot Avatar with Logo */}
-                                <div 
-                                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md p-1"
-                                    style={{ backgroundColor: avatarColors.backgroundColor }}
-                                >
-                                    <img 
-                                        src="/bot-avatar.svg" 
-                                        alt="Bot" 
-                                        className="w-full h-full object-contain"
-                                        style={{ 
-                                            filter: avatarColors.iconColor === 'white' 
-                                                ? 'brightness(0) invert(1)' 
-                                                : 'brightness(0)'
-                                        }}
-                                    />
-                                </div>
-                                
-                                {/* Shimmer bubble */}
-                                <div className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 text-blue-700 text-sm font-medium shadow-sm overflow-hidden">
-                                    {/* Shimmer effect */}
-                                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
-                                    
-                                    <svg className="w-4 h-4 animate-pulse relative z-10" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="relative z-10">{waitingForInput}</span>
-                                </div>
-                            </div>
+                {waitingForInput && (
+                    <div className="flex justify-center px-2 sm:px-4 pb-4 animate-fade-in">
+                        <div className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 text-blue-700 text-sm font-medium shadow-sm overflow-hidden">
+                            {/* Shimmer effect */}
+                            <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                            
+                            <svg className="w-4 h-4 animate-pulse relative z-10" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                            </svg>
+                            <span className="relative z-10">{waitingForInput}</span>
                         </div>
-                    );
-                })()}
+                    </div>
+                )}
                 
                 <div ref={messagesEndRef} />
             </div>
