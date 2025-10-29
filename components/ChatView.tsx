@@ -394,12 +394,29 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 {chatSession.messages.map(msg => (
                     <ChatMessage key={msg.id} msg={msg} />
                 ))}
-                {isLoading && (
-                    <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0">
-                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center flex-shrink-0 mt-1 shadow-md">
-                            <ChatIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                        </div>
-                        <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl accent-bg-lighter border accent-border shadow-sm transition-all duration-500">
+                {isLoading && (() => {
+                    // Get primary color from CSS variable
+                    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#59B4E2';
+                    const avatarColors = getBotAvatarColors(primaryColor);
+                    
+                    return (
+                        <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0">
+                            <div 
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-md p-1"
+                                style={{ backgroundColor: 'var(--primary-color)' }}
+                            >
+                                <img 
+                                    src="/bot-avatar.svg" 
+                                    alt="Bot" 
+                                    className="w-full h-full object-contain"
+                                    style={{ 
+                                        filter: avatarColors.iconColor === 'white' 
+                                            ? 'brightness(0) invert(1)' 
+                                            : 'brightness(0)'
+                                    }}
+                                />
+                            </div>
+                            <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl accent-bg-lighter border accent-border shadow-sm transition-all duration-500">
                             {!isLoadingTimeout ? (
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex-shrink-0">
@@ -425,10 +442,11 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                             )}
                         </div>
                     </div>
-                )}
+                    );
+                })()}
                 
-                {/* Waiting for Input Indicator (Dialog Mode) */}
-                {waitingForInput && (
+                {/* Waiting for Input Indicator (Dialog Mode ONLY) */}
+                {waitingForInput && vorlage?.is_dialog_mode && (
                     <div className="flex justify-center px-2 sm:px-4 pb-4 animate-fade-in">
                         <div className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 text-blue-700 text-sm font-medium shadow-sm overflow-hidden">
                             {/* Shimmer effect */}
