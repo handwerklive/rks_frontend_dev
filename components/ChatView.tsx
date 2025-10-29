@@ -296,11 +296,11 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                             </div>
                         )}
                         {replyToContent && (
-                            <div className="mb-2 p-2 rounded-lg border-l-4 flex items-start gap-2 text-xs accent-bg-light accent-border-left">
-                                <ReplyIcon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 accent-text" />
+                            <div className="mb-3 p-3 rounded-xl bg-gray-50 border border-gray-200 flex items-start gap-2.5 text-sm shadow-sm">
+                                <ReplyIcon className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-500" />
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-medium mb-0.5 accent-text-dark">Antwort auf:</div>
-                                    <div className="truncate text-gray-700">{replyToContent}</div>
+                                    <div className="font-semibold mb-1 text-gray-600 text-xs">Antwort auf:</div>
+                                    <div className="text-gray-700 line-clamp-2 leading-relaxed">{replyToContent}</div>
                                 </div>
                             </div>
                         )}
@@ -466,13 +466,13 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
             <div className="p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
                  {/* Reply Reference */}
                  {replyToMessage && (
-                    <div className="mb-2 p-2 sm:p-3 accent-bg-light rounded-xl border accent-border flex items-start gap-2 text-xs sm:text-sm shadow-sm">
-                        <ReplyIcon className="w-4 h-4 accent-text flex-shrink-0 mt-0.5" />
+                    <div className="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-start gap-2.5 text-sm shadow-sm">
+                        <ReplyIcon className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                            <div className="font-medium accent-text-dark mb-1">Antwort auf:</div>
-                            <div className="text-gray-700 truncate">{replyToMessage.content.substring(0, 100)}{replyToMessage.content.length > 100 ? '...' : ''}</div>
+                            <div className="font-semibold text-gray-600 mb-1 text-xs">Antwort auf:</div>
+                            <div className="text-gray-700 line-clamp-2 leading-relaxed">{replyToMessage.content.substring(0, 150)}{replyToMessage.content.length > 150 ? '...' : ''}</div>
                         </div>
-                        <button onClick={() => setReplyToMessage(null)} className="accent-text hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1 flex-shrink-0" aria-label="Referenz entfernen">&times;</button>
+                        <button onClick={() => setReplyToMessage(null)} className="text-gray-400 hover:text-red-500 hover:scale-110 transition-all text-xl leading-none px-1 flex-shrink-0" aria-label="Referenz entfernen">&times;</button>
                     </div>
                 )}
                 
