@@ -272,15 +272,6 @@ const App: React.FC = () => {
         setCurrentChatId(newChat.id);
         setView(View.CHAT);
         
-        // Auto-start dialog mode if vorlage has dialog mode enabled
-        if (vorlage?.is_dialog_mode) {
-            console.log('[DIALOG] Auto-starting dialog mode for vorlage:', vorlage.name);
-            // Send empty message to trigger dialog start
-            setTimeout(() => {
-                console.log('[DIALOG] Sending auto-start message');
-                handleSendMessage(newChat.id, ' ', false, null);  // Send space instead of empty
-            }, 500);  // Increase timeout to ensure chat is ready
-        }
     };
 
     const handleNewQuickChat = () => {
@@ -341,15 +332,10 @@ const App: React.FC = () => {
         }, 90000);
 
         try {
-            // Optimistically add user message to UI (skip if empty/whitespace - dialog auto-start)
-            if (messageContent.trim() && messageContent.trim().length > 0) {
-                console.log('[DIALOG] Adding user message to UI:', messageContent);
-                setChatSessions(prev => prev.map(cs => 
-                    cs.id === chatId ? { ...cs, messages: [...cs.messages, userMessage] } : cs
-                ));
-            } else {
-                console.log('[DIALOG] Skipping empty/whitespace user message in UI');
-            }
+            // Optimistically add user message to UI
+            setChatSessions(prev => prev.map(cs => 
+                cs.id === chatId ? { ...cs, messages: [...cs.messages, userMessage] } : cs
+            ));
             
             // Add file context if documents are used
             let finalMessageContent = messageContent;
@@ -459,13 +445,8 @@ const App: React.FC = () => {
                                     
                                     case 'waiting_for_input':
                                         // Show waiting for input indicator
-                                        const waitMsg = data.message || 'Warte auf Ihre Antwort...';
-                                        console.log('[DIALOG] Received waiting_for_input event:', waitMsg);
-                                        console.log('[DIALOG] Setting waitingForInput state to:', waitMsg);
-                                        setWaitingForInput(waitMsg);
-                                        setIsLoading(false); // Stop loading when waiting for user input
-                                        setLoadingStatus('Verarbeite Anfrage...');
-                                        console.log('[DIALOG] State should be set now');
+                                        setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
+                                        setIsLoading(false);
                                         break;
                                     
                                     case 'done':
