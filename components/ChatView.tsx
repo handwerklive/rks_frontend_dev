@@ -409,7 +409,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 )}
                 
                 {/* Waiting for Input Indicator (Dialog Mode) */}
-                {waitingForInput && !isLoading && (
+                {waitingForInput && (
                     <div className="flex justify-start px-2 sm:px-4 pb-4 animate-fade-in">
                         <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-700 text-sm font-medium shadow-sm">

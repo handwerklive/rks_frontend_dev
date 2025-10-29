@@ -445,6 +445,8 @@ const App: React.FC = () => {
                                     case 'waiting_for_input':
                                         // Show waiting for input indicator
                                         setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
+                                        setIsLoading(false); // Stop loading when waiting for user input
+                                        setLoadingStatus('Verarbeite Anfrage...');
                                         break;
                                     
                                     case 'done':
