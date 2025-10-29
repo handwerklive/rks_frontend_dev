@@ -274,8 +274,10 @@ const App: React.FC = () => {
         
         // Auto-start dialog mode if vorlage has dialog mode enabled
         if (vorlage?.is_dialog_mode) {
+            console.log('[DIALOG] Auto-starting dialog mode for vorlage:', vorlage.name);
             // Send empty message to trigger dialog start
             setTimeout(() => {
+                console.log('[DIALOG] Sending auto-start message');
                 handleSendMessage(newChat.id, '', false, null);
             }, 100);
         }
@@ -452,6 +454,7 @@ const App: React.FC = () => {
                                     
                                     case 'waiting_for_input':
                                         // Show waiting for input indicator
+                                        console.log('[DIALOG] Received waiting_for_input event:', data.message);
                                         setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
                                         setIsLoading(false); // Stop loading when waiting for user input
                                         setLoadingStatus('Verarbeite Anfrage...');
