@@ -15,6 +15,7 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load user settings
   useEffect(() => {
@@ -45,7 +46,10 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
 
   const handleSave = async () => {
     try {
+      setIsSaving(true);
       setSaveError('');
+      setSaveSuccess(false);
+      
       const token = localStorage.getItem('access_token');
       const response = await axios.patch(`${API_BASE_URL}api/user-settings`, {
         personal_system_prompt: personalSystemPrompt,
@@ -59,10 +63,12 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
 
       if (response.status === 200) {
         setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
+        setTimeout(() => setSaveSuccess(false), 2000);
       }
     } catch (error) {
       setSaveError('Netzwerkfehler beim Speichern');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -148,18 +154,35 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
           <div className="flex items-center gap-4">
             <button
               onClick={handleSave}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 active:scale-98 transition-all shadow-md"
+              disabled={isSaving || saveSuccess}
+              className={`flex-1 py-3 px-6 rounded-lg font-medium transition-all shadow-md ${
+                saveSuccess
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 active:scale-98'
+              } ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              Einstellungen speichern
+              {isSaving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Speichere...
+                </span>
+              ) : saveSuccess ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Erfolgreich gespeichert!
+                </span>
+              ) : (
+                'Einstellungen speichern'
+              )}
             </button>
           </div>
 
-          {/* Success/Error Messages */}
-          {saveSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800 animate-fade-in">
-              ✓ Einstellungen erfolgreich gespeichert!
-            </div>
-          )}
+          {/* Error Message */}
           {saveError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 animate-fade-in">
               ✗ {saveError}

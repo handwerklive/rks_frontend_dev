@@ -13,6 +13,7 @@ import ChatView from './components/ChatView';
 import ChatHistoryView from './components/ChatHistoryView';
 import LiquidGlassBackground from './components/LiquidGlassBackground';
 import FileView from './components/FileView';
+import Toast from './components/Toast';
 
 // Import Types
 import { View, User, Vorlage, ChatSession, Message, Settings, UserRole, UserStatus, AppFile } from './types';
@@ -41,6 +42,12 @@ const App: React.FC = () => {
     const [isFetchingUsers, setIsFetchingUsers] = useState(false);
     const [isFetchingVorlagen, setIsFetchingVorlagen] = useState(false);
     const [isFetchingChats, setIsFetchingChats] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
+    const [waitingForInput, setWaitingForInput] = useState<string | null>(null);
+
+    const showToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
+        setToast({ message, type });
+    };
 
     // Effect for handling user authentication state changes
     useEffect(() => {
@@ -134,7 +141,7 @@ const App: React.FC = () => {
                 setViewData(data);
             } catch (error: any) {
                 console.error('Error fetching vorlagen:', error);
-                alert('Fehler beim Laden der Vorlagen: ' + (error.response?.data?.detail || error.message));
+                showToast('Fehler beim Laden der Vorlagen: ' + (error.response?.data?.detail || error.message));
                 setView(targetView);
                 setViewData(data);
             } finally {
@@ -150,7 +157,7 @@ const App: React.FC = () => {
                 setViewData(data);
             } catch (error: any) {
                 console.error('Error fetching chats:', error);
-                alert('Fehler beim Laden der Chats: ' + (error.response?.data?.detail || error.message));
+                showToast('Fehler beim Laden der Chats: ' + (error.response?.data?.detail || error.message));
                 setView(targetView);
                 setViewData(data);
             } finally {
@@ -166,7 +173,7 @@ const App: React.FC = () => {
                 setViewData(data);
             } catch (error: any) {
                 console.error('Error fetching chats:', error);
-                alert('Fehler beim Laden der Chats: ' + (error.response?.data?.detail || error.message));
+                showToast('Fehler beim Laden der Chats: ' + (error.response?.data?.detail || error.message));
                 setView(targetView);
                 setViewData(data);
             } finally {
@@ -202,18 +209,21 @@ const App: React.FC = () => {
                 // Update existing vorlage
                 const updatedVorlage = await vorlagenAPI.update(viewData.vorlageId, vorlageData);
                 setVorlagen(prev => prev.map(v => v.id === viewData.vorlageId ? updatedVorlage : v));
-                alert('Vorlage erfolgreich aktualisiert!');
+                // Success feedback is now shown in the button
             } else {
                 // Create new vorlage
                 const newVorlage = await vorlagenAPI.create(vorlageData);
                 setVorlagen(prev => [newVorlage, ...prev]);
-                alert('Vorlage erfolgreich erstellt!');
+                // Success feedback is now shown in the button
             }
-            setView(View.VORLAGEN_LIST);
-            setViewData(null);
+            // Navigate back after a short delay to show success state
+            setTimeout(() => {
+                setView(View.VORLAGEN_LIST);
+                setViewData(null);
+            }, 1500);
         } catch (error: any) {
             console.error('Error saving vorlage:', error);
-            alert('Fehler beim Speichern der Vorlage: ' + (error.response?.data?.detail || error.message));
+            showToast('Fehler beim Speichern der Vorlage: ' + (error.response?.data?.detail || error.message));
         } finally {
             setIsLoading(false);
         }
@@ -238,7 +248,7 @@ const App: React.FC = () => {
             setFiles(prev => [...prev, newFile]);
         };
         reader.onerror = () => {
-            alert("Fehler beim Lesen der Datei.");
+            showToast("Fehler beim Lesen der Datei.");
         };
         reader.readAsText(file);
     };
@@ -431,8 +441,14 @@ const App: React.FC = () => {
                                         }
                                         break;
                                     
+                                    case 'waiting_for_input':
+                                        // Show waiting for input indicator
+                                        setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
+                                        break;
+                                    
                                     case 'done':
                                         aiMessageId = data.message_id;
+                                        setWaitingForInput(null); // Clear waiting indicator
                                         // Update final message ID
                                         setChatSessions(prev => prev.map(cs => 
                                             cs.id === actualChatId ? {
@@ -533,7 +549,7 @@ const App: React.FC = () => {
             }
         } catch (error: any) {
             console.error('Error deleting chat:', error);
-            alert('Fehler beim Löschen des Chats: ' + (error.response?.data?.detail || error.message));
+            showToast('Fehler beim Löschen des Chats: ' + (error.response?.data?.detail || error.message));
         } finally {
             setIsLoading(false);
         }
@@ -585,7 +601,7 @@ const App: React.FC = () => {
                     handleNavigate(View.HOME);
                     return null;
                 }
-                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} loadingStatus={loadingStatus} settings={settings} onUpdateSettings={updateSettings} />;
+                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} loadingStatus={loadingStatus} waitingForInput={waitingForInput} settings={settings} onUpdateSettings={updateSettings} />;
             default:
                 return <LoginView onLogin={handleLogin} onRegister={handleRegister} onNavigate={handleNavigate} />;
         }
@@ -606,6 +622,13 @@ const App: React.FC = () => {
                     </div>
                 )}
                 {renderView()}
+                {toast && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast(null)}
+                    />
+                )}
             </div>
         </main>
     );

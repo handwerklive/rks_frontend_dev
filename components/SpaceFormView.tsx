@@ -18,6 +18,9 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
   const [useLightrag, setUseLightrag] = useState(false);
   const [isDialogMode, setIsDialogMode] = useState(false);
   const [dialogGoal, setDialogGoal] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     if (existingVorlage) {
@@ -30,21 +33,41 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
     }
   }, [existingVorlage]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
     if (!name.trim()) {
-        alert("Bitte gib einen Namen für die Vorlage ein.");
+        setValidationError("Bitte gib einen Namen für die Vorlage ein.");
         return;
     }
-    onSave({ 
-      name, 
-      description, 
-      system_prompt, 
-      isFavorite: existingVorlage?.isFavorite || false, 
-      use_lightrag: useLightrag,
-      is_dialog_mode: isDialogMode,
-      dialog_goal: isDialogMode ? dialogGoal : null
-    }, { isGlobal });
+    
+    setValidationError('');
+    setIsSaving(true);
+    setSaveSuccess(false);
+    
+    try {
+      await onSave({ 
+        name, 
+        description, 
+        system_prompt, 
+        isFavorite: existingVorlage?.isFavorite || false, 
+        use_lightrag: useLightrag,
+        is_dialog_mode: isDialogMode,
+        dialog_goal: isDialogMode ? dialogGoal : null
+      }, { isGlobal });
+      
+      setSaveSuccess(true);
+      
+      // Reset success state after 2 seconds
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Save error:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   return (
@@ -65,11 +88,24 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
             type="text"
             id="vorlageName"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (validationError) setValidationError('');
+            }}
             placeholder="z.B. Kreativ-Assistent"
             required
-            className="w-full bg-white h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+            className={`w-full bg-white h-12 px-4 py-3 rounded-lg border text-gray-900 focus:outline-none focus:ring-2 transition-all ${
+              validationError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[var(--primary-color)]'
+            }`}
           />
+          {validationError && (
+            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {validationError}
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor="vorlageDescription" className="block text-sm font-medium text-gray-600 mb-2">
@@ -183,9 +219,31 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
         <div className="mt-auto">
             <button
               type="submit"
-              className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-[var(--primary-color)]"
+              disabled={isSaving || saveSuccess}
+              className={`w-full h-12 font-semibold rounded-lg px-4 py-3 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white ${
+                saveSuccess 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white hover:opacity-90 focus:ring-[var(--primary-color)]'
+              } ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              Speichern
+              {isSaving ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Speichere...
+                </span>
+              ) : saveSuccess ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Erfolgreich gespeichert!
+                </span>
+              ) : (
+                'Speichern'
+              )}
             </button>
         </div>
       </form>

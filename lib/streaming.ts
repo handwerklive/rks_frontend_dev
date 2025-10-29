@@ -3,7 +3,7 @@
  */
 
 export interface StreamChunk {
-  type: 'start' | 'chunk' | 'done' | 'error' | 'status' | 'content' | 'chat_id';
+  type: 'start' | 'chunk' | 'done' | 'error' | 'status' | 'content' | 'chat_id' | 'waiting_for_input';
   content?: string;
   chat_id?: number;
   message_id?: string;
@@ -18,6 +18,7 @@ export interface StreamCallbacks {
   onError?: (error: string) => void;
   onStatus?: (status: string) => void;
   onChatId?: (chatId: number) => void;
+  onWaitingForInput?: (message: string) => void;
 }
 
 /**
@@ -120,6 +121,13 @@ export async function streamChatMessage(
                 // Handle chat_id updates
                 if (callbacks.onChatId && chunk.chat_id) {
                   callbacks.onChatId(chunk.chat_id);
+                }
+                break;
+
+              case 'waiting_for_input':
+                // Handle waiting for input indicator
+                if (callbacks.onWaitingForInput && chunk.message !== undefined) {
+                  callbacks.onWaitingForInput(chunk.message);
                 }
                 break;
 
