@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({ title, onLogout, onNavigate, onBack, sh
           <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       )}
-      <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate px-12 sm:px-16 max-w-full">{title}</h1>
+      <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate px-16 max-w-full">{title}</h1>
       <div className="absolute top-1/2 right-2 sm:right-4 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
         {showClearButton && onClear && (
              <button 
