@@ -82,11 +82,14 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                                 className="group w-full p-4 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                             >
                                 <button onClick={(e) => onSelectChat(chat.id, e)} className="flex-1 min-w-0" aria-label={`Gehe zu Chat: ${chat.title}`}>
-                                    <div className="flex flex-col items-start gap-1 pl-2 sm:pl-4 md:pl-8">
-                                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors w-full text-left">{chat.title}</h3>
-                                        <p className={`text-sm font-medium text-left ${vorlage ? 'text-[var(--primary-color)]' : 'text-gray-500'}`}>
-                                            {vorlage ? `Vorlage: ${vorlage.name}` : 'Schnell-Chat'}
-                                        </p>
+                                    <div className="flex justify-between items-center pl-2 sm:pl-4 md:pl-8">
+                                        <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                                            <h3 className="font-semibold text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors w-full text-left">{chat.title}</h3>
+                                            <p className={`text-sm font-medium text-left ${vorlage ? 'text-[var(--primary-color)]' : 'text-gray-500'}`}>
+                                                {vorlage ? `Vorlage: ${vorlage.name}` : 'Schnell-Chat'}
+                                            </p>
+                                        </div>
+                                        <span className="text-xs text-gray-500 flex-shrink-0 ml-4">{formatDate(chat.created_at)}</span>
                                     </div>
                                 </button>
                                 <button
