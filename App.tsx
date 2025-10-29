@@ -470,7 +470,7 @@ const App: React.FC = () => {
                                     
                                     case 'done':
                                         aiMessageId = data.message_id;
-                                        setWaitingForInput(null); // Clear waiting indicator
+                                        // DON'T clear waiting indicator here - it should stay until user sends message
                                         // Update final message ID
                                         setChatSessions(prev => prev.map(cs => 
                                             cs.id === actualChatId ? {
@@ -481,6 +481,7 @@ const App: React.FC = () => {
                                                 )
                                             } : cs
                                         ));
+                                        setIsLoading(false);
                                         break;
                                     
                                     case 'title':
