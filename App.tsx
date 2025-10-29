@@ -278,8 +278,8 @@ const App: React.FC = () => {
             // Send empty message to trigger dialog start
             setTimeout(() => {
                 console.log('[DIALOG] Sending auto-start message');
-                handleSendMessage(newChat.id, '', false, null);
-            }, 100);
+                handleSendMessage(newChat.id, ' ', false, null);  // Send space instead of empty
+            }, 500);  // Increase timeout to ensure chat is ready
         }
     };
 
@@ -341,11 +341,14 @@ const App: React.FC = () => {
         }, 90000);
 
         try {
-            // Optimistically add user message to UI (skip if empty - dialog auto-start)
-            if (messageContent.trim()) {
+            // Optimistically add user message to UI (skip if empty/whitespace - dialog auto-start)
+            if (messageContent.trim() && messageContent.trim().length > 0) {
+                console.log('[DIALOG] Adding user message to UI:', messageContent);
                 setChatSessions(prev => prev.map(cs => 
                     cs.id === chatId ? { ...cs, messages: [...cs.messages, userMessage] } : cs
                 ));
+            } else {
+                console.log('[DIALOG] Skipping empty/whitespace user message in UI');
             }
             
             // Add file context if documents are used
