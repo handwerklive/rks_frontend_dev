@@ -341,10 +341,12 @@ const App: React.FC = () => {
         }, 90000);
 
         try {
-            // Optimistically add user message to UI
-            setChatSessions(prev => prev.map(cs => 
-                cs.id === chatId ? { ...cs, messages: [...cs.messages, userMessage] } : cs
-            ));
+            // Optimistically add user message to UI (skip if empty - dialog auto-start)
+            if (messageContent.trim()) {
+                setChatSessions(prev => prev.map(cs => 
+                    cs.id === chatId ? { ...cs, messages: [...cs.messages, userMessage] } : cs
+                ));
+            }
             
             // Add file context if documents are used
             let finalMessageContent = messageContent;
