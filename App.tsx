@@ -459,10 +459,13 @@ const App: React.FC = () => {
                                     
                                     case 'waiting_for_input':
                                         // Show waiting for input indicator
-                                        console.log('[DIALOG] Received waiting_for_input event:', data.message);
-                                        setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
+                                        const waitMsg = data.message || 'Warte auf Ihre Antwort...';
+                                        console.log('[DIALOG] Received waiting_for_input event:', waitMsg);
+                                        console.log('[DIALOG] Setting waitingForInput state to:', waitMsg);
+                                        setWaitingForInput(waitMsg);
                                         setIsLoading(false); // Stop loading when waiting for user input
                                         setLoadingStatus('Verarbeite Anfrage...');
+                                        console.log('[DIALOG] State should be set now');
                                         break;
                                     
                                     case 'done':
