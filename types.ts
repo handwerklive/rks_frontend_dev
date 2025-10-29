@@ -38,6 +38,7 @@ export interface Vorlage {
     use_lightrag: boolean;
     is_dialog_mode: boolean;
     dialog_goal: string | null;
+    is_global: boolean;
     created_at: string;
 }
 
