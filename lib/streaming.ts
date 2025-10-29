@@ -3,10 +3,11 @@
  */
 
 export interface StreamChunk {
-  type: 'start' | 'chunk' | 'done' | 'error';
+  type: 'start' | 'chunk' | 'done' | 'error' | 'status' | 'content' | 'chat_id';
   content?: string;
   chat_id?: number;
   message_id?: string;
+  message?: string;
   error?: string;
 }
 
@@ -15,6 +16,8 @@ export interface StreamCallbacks {
   onChunk?: (content: string) => void;
   onDone?: (message_id: string) => void;
   onError?: (error: string) => void;
+  onStatus?: (status: string) => void;
+  onChatId?: (chatId: number) => void;
 }
 
 /**
@@ -96,6 +99,27 @@ export async function streamChatMessage(
               case 'chunk':
                 if (callbacks.onChunk && chunk.content) {
                   callbacks.onChunk(chunk.content);
+                }
+                break;
+
+              case 'content':
+                // Handle content type (same as chunk for compatibility)
+                if (callbacks.onChunk && chunk.content) {
+                  callbacks.onChunk(chunk.content);
+                }
+                break;
+
+              case 'status':
+                // Handle status updates
+                if (callbacks.onStatus && chunk.message !== undefined) {
+                  callbacks.onStatus(chunk.message);
+                }
+                break;
+
+              case 'chat_id':
+                // Handle chat_id updates
+                if (callbacks.onChatId && chunk.chat_id) {
+                  callbacks.onChatId(chunk.chat_id);
                 }
                 break;
 

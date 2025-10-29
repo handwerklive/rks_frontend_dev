@@ -36,6 +36,8 @@ export interface Vorlage {
     system_prompt: string;
     isFavorite: boolean;
     use_lightrag: boolean;
+    is_dialog_mode: boolean;
+    dialog_goal: string | null;
     created_at: string;
 }
 
