@@ -419,14 +419,18 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                             <div className="flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
                                 {/* Bot Avatar with Logo */}
                                 <div 
-                                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md p-1.5"
+                                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md p-1"
                                     style={{ backgroundColor: avatarColors.backgroundColor }}
                                 >
                                     <img 
-                                        src="/bot-logo.svg" 
+                                        src="/bot-avatar.svg" 
                                         alt="Bot" 
-                                        className="w-full h-full"
-                                        style={{ filter: avatarColors.iconColor === 'white' ? 'invert(1)' : 'invert(0)' }}
+                                        className="w-full h-full object-contain"
+                                        style={{ 
+                                            filter: avatarColors.iconColor === 'white' 
+                                                ? 'brightness(0) invert(1)' 
+                                                : 'brightness(0)'
+                                        }}
                                     />
                                 </div>
                                 
