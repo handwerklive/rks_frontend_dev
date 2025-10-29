@@ -27,7 +27,7 @@ import { vorlagenAPI, chatsAPI, filesAPI, settingsAPI } from './lib/api';
 
 const App: React.FC = () => {
     // Hooks
-    const { user, users, login, logout, register, updateUser, replaceAllUsers } = useAuth();
+    const { user, users, login, logout, register, updateUser, deleteUser, replaceAllUsers } = useAuth();
     const { settings, updateSettings } = useSettings();
     const [view, setView] = useState<View>(View.LOGIN);
     const [viewData, setViewData] = useState<any>(null);
@@ -231,6 +231,19 @@ const App: React.FC = () => {
     
     const handleEditVorlage = (vorlage: Vorlage, event: React.MouseEvent) => {
         handleNavigate(View.VORLAGEN_FORM, event, { vorlageId: vorlage.id });
+    };
+
+    const handleDeleteVorlage = async (vorlageId: number) => {
+        try {
+            await vorlagenAPI.delete(vorlageId);
+            setVorlagen(prev => prev.filter(v => v.id !== vorlageId));
+            showToast('Vorlage erfolgreich gelöscht');
+            handleNavigate(View.VORLAGEN_LIST);
+        } catch (error: any) {
+            console.error('Error deleting vorlage:', error);
+            showToast('Fehler beim Löschen der Vorlage: ' + (error.response?.data?.detail || error.message));
+            throw error;
+        }
     };
 
     // File Handlers
@@ -584,13 +597,13 @@ const App: React.FC = () => {
             case View.HOME:
                 return <HomeView user={user} vorlagen={vorlagen} onNavigate={handleNavigate} onLogout={handleLogout} onNewQuickChat={handleNewQuickChat} />;
             case View.ADMIN:
-                return <AdminView users={users} onUpdateUser={updateUser} onNavigate={handleNavigate} onLogout={handleLogout} settings={settings} onUpdateSettings={updateSettings} />;
+                return <AdminView users={users} onUpdateUser={updateUser} onDeleteUser={deleteUser} onNavigate={handleNavigate} onLogout={handleLogout} settings={settings} onUpdateSettings={updateSettings} />;
             case View.SETTINGS:
                 return <UserSettingsView onNavigate={handleNavigate} />;
             case View.VORLAGEN_LIST:
                 return <VorlagenListView vorlagen={vorlagen} onSelectVorlage={(id, e) => handleNavigate(View.CHAT_LIST, e, { vorlageId: id })} onNewVorlage={(e) => handleNavigate(View.VORLAGEN_FORM, e)} onEditVorlage={handleEditVorlage} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.VORLAGEN_FORM:
-                return <VorlagenFormView onSave={handleSaveVorlage} existingVorlage={existingVorlageToEdit} onNavigate={handleNavigate} onLogout={handleLogout} isAdmin={user?.role === UserRole.ADMIN} />;
+                return <VorlagenFormView onSave={handleSaveVorlage} onDelete={handleDeleteVorlage} existingVorlage={existingVorlageToEdit} onNavigate={handleNavigate} onLogout={handleLogout} isAdmin={user?.role === UserRole.ADMIN} />;
             case View.CHAT_LIST:
                 const chatsForVorlage = chatSessions.filter(cs => cs.vorlage_id === viewData?.vorlageId);
                 const selectedVorlage = vorlagen.find(v => v.id === viewData?.vorlageId);

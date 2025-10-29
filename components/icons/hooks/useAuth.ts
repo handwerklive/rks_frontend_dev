@@ -87,10 +87,45 @@ export function useAuth() {
   };
   
   const updateUser = async (userId: string, updates: Partial<Pick<User, 'role' | 'status'>>): Promise<{ success: boolean; error?: string }> => {
-    // This would need to be implemented in the backend
-    // For now, just update local state
-    setUsers(prev => prev.map(u => (u.id === userId ? { ...u, ...updates } : u)));
-    return { success: true };
+    try {
+      // Call backend API
+      const response = await authAPI.updateUser(userId, updates);
+      
+      // Update local state with response
+      setUsers(prev => prev.map(u => (u.id === userId ? { ...u, ...updates } : u)));
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Update user error:', error);
+      
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Fehler beim Aktualisieren des Benutzers.';
+      
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Call backend API
+      await authAPI.deleteUser(userId);
+      
+      // Update local state
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Delete user error:', error);
+      
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Fehler beim Löschen des Benutzers.';
+      
+      return { success: false, error: errorMessage };
+    }
   };
 
   const replaceAllUsers = (newUsers: User[]) => {
@@ -104,6 +139,7 @@ export function useAuth() {
     logout,
     register,
     updateUser,
+    deleteUser,
     replaceAllUsers,
   };
 }

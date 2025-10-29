@@ -10,13 +10,14 @@ import { settingsAPI, logsAPI } from '../lib/api';
 interface AdminViewProps {
   users: User[];
   onUpdateUser: (userId: string, updates: Partial<Pick<User, 'role' | 'status'>>) => Promise<{ success: boolean; error?: string }>;
+  onDeleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
   onNavigate: (view: View, event?: React.MouseEvent) => void;
   onLogout: () => void;
   settings: Settings;
   onUpdateSettings: (newSettings: Partial<Settings>) => void;
 }
 
-const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, onLogout, settings, onUpdateSettings }) => {
+const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser, onNavigate, onLogout, settings, onUpdateSettings }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'branding' | 'logs'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -51,6 +52,8 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   
   // Logs State
   const [logs, setLogs] = useState<any[]>([]);
@@ -173,6 +176,17 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
       const newStatus = currentStatus === UserStatus.ACTIVE ? UserStatus.PENDING : UserStatus.ACTIVE;
       await onUpdateUser(userId, { status: newStatus });
       setUpdatingUserId(null);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId);
+    const result = await onDeleteUser(userId);
+    if (result.success) {
+      setUserToDelete(null);
+    } else {
+      alert(result.error || 'Fehler beim Löschen des Benutzers');
+    }
+    setDeletingUserId(null);
   };
 
   const handleSaveBrandingSettings = async () => {
@@ -353,6 +367,13 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                         }`}
                       >
                         {updatingUserId === user.id ? '...' : (user.status === UserStatus.ACTIVE ? 'Aktiv' : 'Ausstehend')}
+                      </button>
+                      <button
+                        onClick={() => setUserToDelete(user.id)}
+                        disabled={deletingUserId === user.id}
+                        className="px-3 h-12 text-sm font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
+                      >
+                        {deletingUserId === user.id ? '...' : 'Löschen'}
                       </button>
                     </div>
                   </div>
@@ -1097,6 +1118,34 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onNavigate, 
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Dialog */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Benutzer löschen?</h3>
+            <p className="text-sm text-gray-600">
+              Möchten Sie diesen Benutzer wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setUserToDelete(null)}
+                disabled={deletingUserId !== null}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => handleDeleteUser(userToDelete)}
+                disabled={deletingUserId !== null}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deletingUserId === userToDelete ? 'Lösche...' : 'Ja, löschen'}
+              </button>
+            </div>
           </div>
         </div>
       )}

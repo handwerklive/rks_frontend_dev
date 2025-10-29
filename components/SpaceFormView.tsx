@@ -4,13 +4,14 @@ import Header from './Header';
 
 interface VorlagenFormViewProps {
   onSave: (vorlageData: Omit<Vorlage, 'id' | 'created_at'>, options?: { isGlobal?: boolean }) => void;
+  onDelete?: (vorlageId: number) => Promise<void>;
   existingVorlage: Vorlage | null;
   onNavigate: (view: View, event?: React.MouseEvent) => void;
   onLogout: () => void;
   isAdmin?: boolean;
 }
 
-const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVorlage, onNavigate, onLogout, isAdmin = false }) => {
+const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, onDelete, existingVorlage, onNavigate, onLogout, isAdmin = false }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [system_prompt, setSystemPrompt] = useState('');
@@ -21,12 +22,15 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (existingVorlage) {
       setName(existingVorlage.name);
       setDescription(existingVorlage.description);
       setSystemPrompt(existingVorlage.system_prompt);
+      setIsGlobal(existingVorlage.is_global || false);
       setUseLightrag(existingVorlage.use_lightrag || false);
       setIsDialogMode(existingVorlage.is_dialog_mode || false);
       setDialogGoal(existingVorlage.dialog_goal || '');
@@ -54,7 +58,8 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
         isFavorite: existingVorlage?.isFavorite || false, 
         use_lightrag: useLightrag,
         is_dialog_mode: isDialogMode,
-        dialog_goal: isDialogMode ? dialogGoal : null
+        dialog_goal: isDialogMode ? dialogGoal : null,
+        is_global: isGlobal
       }, { isGlobal });
       
       setSaveSuccess(true);
@@ -67,6 +72,20 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
       console.error('Save error:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!existingVorlage || !onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(existingVorlage.id);
+      // Navigation happens in parent component
+    } catch (error) {
+      console.error('Delete error:', error);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
   
@@ -202,7 +221,7 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
             Wenn aktiviert, wird bei Anfragen mit dieser Vorlage die LightRAG Wissensdatenbank durchsucht (nur wenn sinnvoll).
           </p>
         </div>
-        {isAdmin && !existingVorlage && (
+        {isAdmin && (
           <div>
             <label className="inline-flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -213,10 +232,51 @@ const VorlagenFormView: React.FC<VorlagenFormViewProps> = ({ onSave, existingVor
               />
               Globale Vorlage
             </label>
-            <p className="mt-1 text-xs text-gray-500">Wenn aktiviert, wird die Vorlage ohne Benutzerbindung erstellt (user_id = null).</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {existingVorlage 
+                ? 'Wenn aktiviert, ist die Vorlage für alle Benutzer verfügbar.'
+                : 'Wenn aktiviert, wird die Vorlage für alle Benutzer verfügbar gemacht.'}
+            </p>
           </div>
         )}
-        <div className="mt-auto">
+        <div className="mt-auto space-y-3">
+            {existingVorlage && onDelete && (
+              <div>
+                {!showDeleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full h-12 font-semibold rounded-lg px-4 py-3 bg-red-50 text-red-600 border-2 border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  >
+                    Vorlage löschen
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-red-600 font-medium text-center">
+                      Wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={isDeleting}
+                        className="h-10 font-medium rounded-lg px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="h-10 font-medium rounded-lg px-4 py-2 bg-red-600 text-white hover:bg-red-700 transition-all disabled:opacity-50"
+                      >
+                        {isDeleting ? 'Lösche...' : 'Ja, löschen'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <button
               type="submit"
               disabled={isSaving || saveSuccess}

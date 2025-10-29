@@ -56,6 +56,15 @@ export const authAPI = {
     const response = await apiClient.get('/api/auth/me');
     return response.data;
   },
+  
+  updateUser: async (userId: string, data: any) => {
+    const response = await apiClient.patch(`/api/users/${userId}`, data);
+    return response.data;
+  },
+  
+  deleteUser: async (userId: string) => {
+    await apiClient.delete(`/api/users/${userId}`);
+  },
 };
 
 // Users API (Admin)
