@@ -79,17 +79,14 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                         return (
                             <div
                                 key={chat.id}
-                                className="group w-full p-4 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 hover:-translate-y-0.5 active:translate-y-0 text-left flex items-center gap-2"
+                                className="group w-full p-4 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                             >
-                                <button onClick={(e) => onSelectChat(chat.id, e)} className="flex-1 min-w-0" aria-label={`Gehe zu Chat: ${chat.title}`}>
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-semibold text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors">{chat.title}</h3>
-                                            <p className={`text-sm font-medium ${vorlage ? 'text-[var(--primary-color)]' : 'text-gray-500'}`}>
-                                                {vorlage ? `Vorlage: ${vorlage.name}` : 'Schnell-Chat'}
-                                            </p>
-                                        </div>
-                                        <span className="text-xs text-gray-500 flex-shrink-0 ml-4">{formatDate(chat.created_at)}</span>
+                                <button onClick={(e) => onSelectChat(chat.id, e)} className="flex-1 min-w-0 text-center" aria-label={`Gehe zu Chat: ${chat.title}`}>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <h3 className="font-semibold text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors w-full">{chat.title}</h3>
+                                        <p className={`text-sm font-medium ${vorlage ? 'text-[var(--primary-color)]' : 'text-gray-500'}`}>
+                                            {vorlage ? `Vorlage: ${vorlage.name}` : 'Schnell-Chat'}
+                                        </p>
                                     </div>
                                 </button>
                                 <button
