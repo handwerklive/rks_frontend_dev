@@ -26,6 +26,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const [aiProvider, setAiProvider] = useState<'openai' | 'anthropic'>('openai');
   const [openaiModel, setOpenaiModel] = useState('gpt-5-nano');
   const [anthropicModel, setAnthropicModel] = useState('claude-sonnet-4-5-20250929');
+  const [anthropicWebSearchEnabled, setAnthropicWebSearchEnabled] = useState(false);
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   
   // LightRAG Settings
@@ -70,6 +71,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     setAiProvider(settings.ai_provider || 'openai');
     setOpenaiModel(settings.openai_model || 'gpt-5-nano');
     setAnthropicModel(settings.anthropic_model || 'claude-sonnet-4-5-20250929');
+    setAnthropicWebSearchEnabled(settings.anthropic_web_search_enabled || false);
     setStreamingEnabled(settings.streaming_enabled !== undefined ? settings.streaming_enabled : true);
     setLightragEnabled(settings.lightrag_enabled || false);
     setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query/data');
@@ -97,6 +99,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         ai_provider: aiProvider,
         openai_model: openaiModel,
         anthropic_model: anthropicModel,
+        anthropic_web_search_enabled: anthropicWebSearchEnabled,
         streaming_enabled: streamingEnabled,
       });
       // Also update local state
@@ -105,6 +108,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         ai_provider: aiProvider,
         openai_model: openaiModel,
         anthropic_model: anthropicModel,
+        anthropic_web_search_enabled: anthropicWebSearchEnabled,
         streaming_enabled: streamingEnabled,
       });
       setSaveSuccess(true);
@@ -500,6 +504,23 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                     <strong>⭐ Empfohlen:</strong> claude-sonnet-4-5 für beste Coding & Reasoning Performance<br/>
                     <strong>🚀 Schnellste:</strong> claude-haiku-4-5 - 4-5x schneller als Sonnet 4.5<br/>
                     <strong>Hinweis:</strong> Claude-Modelle haben 200K Token Context Window
+                  </p>
+                </div>
+              )}
+
+              {aiProvider === 'anthropic' && (
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={anthropicWebSearchEnabled}
+                      onChange={(e) => setAnthropicWebSearchEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Web Search aktivieren 🌐</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Ermöglicht Claude, aktuelle Informationen aus dem Internet abzurufen. Nützlich für Fragen zu aktuellen Ereignissen, Preisen, oder neuen Technologien.
                   </p>
                 </div>
               )}

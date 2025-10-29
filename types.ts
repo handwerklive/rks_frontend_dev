@@ -96,6 +96,7 @@ export interface Settings {
     
     // Anthropic Configuration (Admin)
     anthropic_model?: string;
+    anthropic_web_search_enabled?: boolean;
     
     // LightRAG Configuration (Admin)
     lightrag_enabled?: boolean;
