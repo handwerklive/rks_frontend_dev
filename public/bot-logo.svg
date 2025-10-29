@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M50 10 C25 10 10 25 10 50 C10 55 11 60 13 65 L15 68 C17 70 20 70 22 68 C24 66 24 63 22 61 L20 58 C18 54 17 52 17 50 C17 29 29 17 50 17 C71 17 83 29 83 50 C83 52 82 54 80 58 L78 61 C76 63 76 66 78 68 C80 70 83 70 85 68 L87 65 C89 60 90 55 90 50 C90 25 75 10 50 10 Z" fill="currentColor"/>
+  <path d="M35 40 L40 50 L35 60 L30 50 Z" fill="currentColor"/>
+  <path d="M50 35 L55 45 L50 55 L45 45 Z" fill="currentColor"/>
+  <path d="M65 45 L70 55 L65 65 L60 55 Z" fill="currentColor"/>
+</svg>

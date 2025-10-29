@@ -8,6 +8,7 @@ import CopyIcon from './icons/CopyIcon';
 import CheckIcon from './icons/CheckIcon';
 import ChatIcon from './icons/ChatIcon';
 import ReplyIcon from './icons/ReplyIcon';
+import { getBotAvatarColors } from '../lib/colorUtils';
 
 // Props interface based on App.tsx usage
 interface ChatViewProps {
@@ -24,7 +25,7 @@ interface ChatViewProps {
   onUpdateSettings: (newSettings: Partial<Settings>) => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, loadingStatus, waitingForInput }) => {
+const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, loadingStatus, waitingForInput, settings }) => {
     const [message, setMessage] = useState('');
     const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
     const [isListening, setIsListening] = useState(false);
@@ -409,18 +410,40 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 )}
                 
                 {/* Waiting for Input Indicator (Dialog Mode) */}
-                {waitingForInput && (
-                    <div className="flex justify-start px-2 sm:px-4 pb-4 animate-fade-in">
-                        <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-700 text-sm font-medium shadow-sm">
-                                <svg className="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                                </svg>
-                                {waitingForInput}
+                {waitingForInput && (() => {
+                    const primaryColor = settings?.primary_color || '#59B4E2';
+                    const avatarColors = getBotAvatarColors(primaryColor);
+                    
+                    return (
+                        <div className="flex justify-start px-2 sm:px-4 pb-4 animate-fade-in">
+                            <div className="flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl">
+                                {/* Bot Avatar with Logo */}
+                                <div 
+                                    className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-md p-1.5"
+                                    style={{ backgroundColor: avatarColors.backgroundColor }}
+                                >
+                                    <img 
+                                        src="/bot-logo.svg" 
+                                        alt="Bot" 
+                                        className="w-full h-full"
+                                        style={{ filter: avatarColors.iconColor === 'white' ? 'invert(1)' : 'invert(0)' }}
+                                    />
+                                </div>
+                                
+                                {/* Shimmer bubble */}
+                                <div className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 text-blue-700 text-sm font-medium shadow-sm overflow-hidden">
+                                    {/* Shimmer effect */}
+                                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                                    
+                                    <svg className="w-4 h-4 animate-pulse relative z-10" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="relative z-10">{waitingForInput}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
                 
                 <div ref={messagesEndRef} />
             </div>
