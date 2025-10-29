@@ -5,6 +5,7 @@ import Header from './Header';
 import ConfirmationDialog from './ConfirmationDialog';
 import ChatIcon from './icons/ChatIcon';
 import TrashIcon from './icons/TrashIcon';
+import Pagination from './Pagination';
 
 interface ChatHistoryViewProps {
     chats: ChatSession[];
@@ -13,9 +14,27 @@ interface ChatHistoryViewProps {
     onDeleteChat: (chatId: number) => void;
     onNavigate: (view: View, event?: React.MouseEvent) => void;
     onLogout: () => void;
+    // Pagination props
+    currentPage?: number;
+    totalPages?: number;
+    totalItems?: number;
+    itemsPerPage?: number;
+    onPageChange?: (page: number) => void;
 }
 
-const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({ chats, vorlagen, onSelectChat, onDeleteChat, onNavigate, onLogout }) => {
+const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({ 
+    chats, 
+    vorlagen, 
+    onSelectChat, 
+    onDeleteChat, 
+    onNavigate, 
+    onLogout,
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    onPageChange
+}) => {
     const [chatToDelete, setChatToDelete] = useState<ChatSession | null>(null);
     
     const formatDate = (timestamp: string) => {
@@ -85,6 +104,17 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({ chats, vorlagen, onSe
                     })
                 )}
             </div>
+            
+            {/* Pagination */}
+            {onPageChange && currentPage && totalPages && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={onPageChange}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                />
+            )}
         </div>
     );
 };

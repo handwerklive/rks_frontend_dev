@@ -91,8 +91,11 @@ export const usersAPI = {
 
 // Vorlagen API
 export const vorlagenAPI = {
-  getAll: async () => {
-    const response = await apiClient.get('/api/vorlagen');
+  getAll: async (limit: number = 25, offset: number = 0) => {
+    const response = await apiClient.get('/api/vorlagen', {
+      params: { limit, offset }
+    });
+    // Return paginated response: { items, total, limit, offset, has_more }
     return response.data;
   },
   
@@ -118,8 +121,11 @@ export const vorlagenAPI = {
 
 // Chats API
 export const chatsAPI = {
-  getAll: async () => {
-    const response = await apiClient.get('/api/chats');
+  getAll: async (limit: number = 25, offset: number = 0) => {
+    const response = await apiClient.get('/api/chats', {
+      params: { limit, offset }
+    });
+    // Return paginated response: { items, total, limit, offset, has_more }
     return response.data;
   },
   

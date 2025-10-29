@@ -44,6 +44,12 @@ const App: React.FC = () => {
     const [isFetchingChats, setIsFetchingChats] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
     const [waitingForInput, setWaitingForInput] = useState<string | null>(null);
+    
+    // Pagination state
+    const [chatPage, setChatPage] = useState(1);
+    const [chatTotalPages, setChatTotalPages] = useState(1);
+    const [chatTotalItems, setChatTotalItems] = useState(0);
+    const [chatItemsPerPage] = useState(25);
 
     const showToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
         setToast({ message, type });
@@ -135,8 +141,8 @@ const App: React.FC = () => {
         } else if (targetView === View.VORLAGEN_LIST) {
             setIsFetchingVorlagen(true);
             try {
-                const fetchedVorlagen = await vorlagenAPI.getAll();
-                setVorlagen(fetchedVorlagen);
+                const response = await vorlagenAPI.getAll();
+                setVorlagen(response.items || []);
                 setView(targetView);
                 setViewData(data);
             } catch (error: any) {
@@ -148,11 +154,14 @@ const App: React.FC = () => {
                 setIsFetchingVorlagen(false);
             }
         } else if (targetView === View.CHAT_HISTORY) {
-            // Load chats from Backend API
+            // Load chats from Backend API with pagination
             setIsFetchingChats(true);
             try {
-                const fetchedChats = await chatsAPI.getAll();
-                setChatSessions(fetchedChats);
+                const offset = (chatPage - 1) * chatItemsPerPage;
+                const response = await chatsAPI.getAll(chatItemsPerPage, offset);
+                setChatSessions(response.items || []);
+                setChatTotalItems(response.total || 0);
+                setChatTotalPages(Math.ceil((response.total || 0) / chatItemsPerPage));
                 setView(targetView);
                 setViewData(data);
             } catch (error: any) {
@@ -164,11 +173,14 @@ const App: React.FC = () => {
                 setIsFetchingChats(false);
             }
         } else if (targetView === View.CHAT_LIST) {
-            // Load chats from Backend API
+            // Load chats from Backend API with pagination
             setIsFetchingChats(true);
             try {
-                const fetchedChats = await chatsAPI.getAll();
-                setChatSessions(fetchedChats);
+                const offset = (chatPage - 1) * chatItemsPerPage;
+                const response = await chatsAPI.getAll(chatItemsPerPage, offset);
+                setChatSessions(response.items || []);
+                setChatTotalItems(response.total || 0);
+                setChatTotalPages(Math.ceil((response.total || 0) / chatItemsPerPage));
                 setView(targetView);
                 setViewData(data);
             } catch (error: any) {
@@ -609,7 +621,34 @@ const App: React.FC = () => {
                 const selectedVorlage = vorlagen.find(v => v.id === viewData?.vorlageId);
                 return <ChatListView vorlageName={selectedVorlage?.name || 'Vorlage'} chats={chatsForVorlage} onSelectChat={handleSelectChat} onNewChat={handleNewChat} onNavigate={handleNavigate} onLogout={handleLogout} onDeleteChat={handleDeleteChat} />;
             case View.CHAT_HISTORY:
-                 return <ChatHistoryView chats={chatSessions} vorlagen={vorlagen} onSelectChat={handleSelectChat} onNavigate={handleNavigate} onLogout={handleLogout} onDeleteChat={handleDeleteChat} />;
+                 return <ChatHistoryView 
+                    chats={chatSessions} 
+                    vorlagen={vorlagen} 
+                    onSelectChat={handleSelectChat} 
+                    onNavigate={handleNavigate} 
+                    onLogout={handleLogout} 
+                    onDeleteChat={handleDeleteChat}
+                    currentPage={chatPage}
+                    totalPages={chatTotalPages}
+                    totalItems={chatTotalItems}
+                    itemsPerPage={chatItemsPerPage}
+                    onPageChange={async (page) => {
+                        setChatPage(page);
+                        setIsFetchingChats(true);
+                        try {
+                            const offset = (page - 1) * chatItemsPerPage;
+                            const response = await chatsAPI.getAll(chatItemsPerPage, offset);
+                            setChatSessions(response.items || []);
+                            setChatTotalItems(response.total || 0);
+                            setChatTotalPages(Math.ceil((response.total || 0) / chatItemsPerPage));
+                        } catch (error: any) {
+                            console.error('Error fetching chats:', error);
+                            showToast('Fehler beim Laden der Chats: ' + (error.response?.data?.detail || error.message));
+                        } finally {
+                            setIsFetchingChats(false);
+                        }
+                    }}
+                 />;
             case View.FILES:
                 return <FileView files={files} onAddFile={handleAddFile} onDeleteFile={handleDeleteFile} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.CHAT:
