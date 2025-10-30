@@ -20,6 +20,48 @@ export const parseMarkdown = (text: string): string => {
     return `<pre class="bg-gray-100 rounded-lg p-2 sm:p-3 my-2 overflow-x-auto text-xs sm:text-sm max-w-full"><code class="language-${lang || 'text'} block whitespace-pre">${code.trim()}</code></pre>`;
   });
   
+  // Markdown tables: | col1 | col2 | with header separator |---|---|
+  processedText = processedText.replace(/(\|.+\|[\r\n]+\|[-:\s|]+\|[\r\n]+(?:\|.+\|[\r\n]*)+)/gm, (match) => {
+    const lines = match.trim().split(/[\r\n]+/);
+    if (lines.length < 3) return match; // Need at least header, separator, and one row
+    
+    const headerLine = lines[0];
+    const separatorLine = lines[1];
+    const dataLines = lines.slice(2);
+    
+    // Parse header
+    const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
+    
+    // Parse data rows
+    const rows = dataLines.map(line => 
+      line.split('|').map(cell => cell.trim()).filter(cell => cell !== '')
+    );
+    
+    // Build HTML table
+    let tableHtml = '<div class="overflow-x-auto my-3"><table class="min-w-full border-collapse border border-gray-300 rounded-lg shadow-sm">';
+    
+    // Header
+    tableHtml += '<thead class="bg-gray-100"><tr>';
+    headers.forEach(header => {
+      tableHtml += `<th class="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700 text-xs sm:text-sm">${header}</th>`;
+    });
+    tableHtml += '</tr></thead>';
+    
+    // Body
+    tableHtml += '<tbody>';
+    rows.forEach((row, idx) => {
+      const bgClass = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+      tableHtml += `<tr class="${bgClass}">`;
+      row.forEach(cell => {
+        tableHtml += `<td class="border border-gray-300 px-3 py-2 text-gray-800 text-xs sm:text-sm">${cell}</td>`;
+      });
+      tableHtml += '</tr>';
+    });
+    tableHtml += '</tbody></table></div>';
+    
+    return tableHtml;
+  });
+  
   // Inline code: `code`
   processedText = processedText.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 sm:px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono text-gray-800 break-all">$1</code>');
   
