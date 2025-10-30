@@ -20,8 +20,8 @@ export const parseMarkdown = (text: string): string => {
     return `<pre class="bg-gray-100 rounded-lg p-2 sm:p-3 my-2 overflow-x-auto text-xs sm:text-sm max-w-full"><code class="language-${lang || 'text'} block whitespace-pre">${code.trim()}</code></pre>`;
   });
   
-  // Markdown tables: | col1 | col2 | with header separator |---|---|
-  processedText = processedText.replace(/(\|.+\|[\r\n]+\|[-:\s|]+\|[\r\n]+(?:\|.+\|[\r\n]*)+)/gm, (match) => {
+  // Markdown tables: support any number of columns with | separators
+  processedText = processedText.replace(/(\|?.+\|.*\|?[\r\n]+[-:\s|]+[\r\n]+(?:\|?.+\|.*\|?[\r\n]*)+)/gm, (match) => {
     const lines = match.trim().split(/[\r\n]+/);
     if (lines.length < 3) return match; // Need at least header, separator, and one row
     
@@ -29,10 +29,13 @@ export const parseMarkdown = (text: string): string => {
     const separatorLine = lines[1];
     const dataLines = lines.slice(2);
     
-    // Parse header
+    // Check if separator line looks like a table separator (contains dashes and pipes)
+    if (!/^[-:\s|]+$/.test(separatorLine)) return match;
+    
+    // Parse header - handle both formats: | col | col | and col | col | col
     const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
     
-    // Parse data rows
+    // Parse data rows - handle both formats
     const rows = dataLines.map(line => 
       line.split('|').map(cell => cell.trim()).filter(cell => cell !== '')
     );
