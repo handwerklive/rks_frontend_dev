@@ -47,9 +47,9 @@ const App: React.FC = () => {
     const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
     const [waitingForInput, setWaitingForInput] = useState<string | null>(null);
     const [showNetworkAnimation, setShowNetworkAnimation] = useState<boolean>(() => {
-        // Show animation only on first app load when not logged in
-        const hasSeenAnimation = sessionStorage.getItem('hasSeenNetworkAnimation');
-        return !hasSeenAnimation && !localStorage.getItem('access_token');
+        // Show animation when not logged in
+        const isLoggedIn = localStorage.getItem('access_token');
+        return !isLoggedIn;
     });
     
     // Pagination state
@@ -760,7 +760,6 @@ const App: React.FC = () => {
                 <NetworkAnimation
                     onComplete={() => {
                         setShowNetworkAnimation(false);
-                        sessionStorage.setItem('hasSeenNetworkAnimation', 'true');
                     }}
                     primaryColor={settings.primary_color || '#0066cc'}
                     secondaryColor={settings.secondary_color || '#00aaff'}
