@@ -92,6 +92,115 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     fileInputRef.current?.click();
   };
 
+  const compressAudio = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // Create offline context for compression (lower sample rate)
+          const targetSampleRate = 16000; // 16kHz is good for speech
+          const offlineContext = new OfflineAudioContext(
+            1, // mono
+            audioBuffer.duration * targetSampleRate,
+            targetSampleRate
+          );
+
+          // Create buffer source
+          const source = offlineContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(offlineContext.destination);
+          source.start(0);
+
+          // Render compressed audio
+          const compressedBuffer = await offlineContext.startRendering();
+
+          // Convert to WAV format (smaller than original)
+          const wav = audioBufferToWav(compressedBuffer);
+          const blob = new Blob([wav], { type: 'audio/wav' });
+          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.wav'), { type: 'audio/wav' });
+
+          console.log(`[COMPRESSION] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB → Compressed: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+          
+          resolve(compressedFile);
+        } catch (error) {
+          console.error('[COMPRESSION] Error:', error);
+          reject(error);
+        }
+      };
+
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const audioBufferToWav = (buffer: AudioBuffer): ArrayBuffer => {
+    const length = buffer.length * buffer.numberOfChannels * 2 + 44;
+    const arrayBuffer = new ArrayBuffer(length);
+    const view = new DataView(arrayBuffer);
+    const channels: Float32Array[] = [];
+    let offset = 0;
+    let pos = 0;
+
+    // Write WAV header
+    const setUint16 = (data: number) => {
+      view.setUint16(pos, data, true);
+      pos += 2;
+    };
+    const setUint32 = (data: number) => {
+      view.setUint32(pos, data, true);
+      pos += 4;
+    };
+
+    // RIFF identifier
+    setUint32(0x46464952);
+    // file length minus RIFF identifier length and file description length
+    setUint32(length - 8);
+    // RIFF type
+    setUint32(0x45564157);
+    // format chunk identifier
+    setUint32(0x20746d66);
+    // format chunk length
+    setUint32(16);
+    // sample format (raw)
+    setUint16(1);
+    // channel count
+    setUint16(buffer.numberOfChannels);
+    // sample rate
+    setUint32(buffer.sampleRate);
+    // byte rate (sample rate * block align)
+    setUint32(buffer.sampleRate * buffer.numberOfChannels * 2);
+    // block align (channel count * bytes per sample)
+    setUint16(buffer.numberOfChannels * 2);
+    // bits per sample
+    setUint16(16);
+    // data chunk identifier
+    setUint32(0x61746164);
+    // data chunk length
+    setUint32(length - pos - 4);
+
+    // Write interleaved data
+    for (let i = 0; i < buffer.numberOfChannels; i++) {
+      channels.push(buffer.getChannelData(i));
+    }
+
+    while (pos < length) {
+      for (let i = 0; i < buffer.numberOfChannels; i++) {
+        let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+        sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        view.setInt16(pos, sample, true);
+        pos += 2;
+      }
+      offset++;
+    }
+
+    return arrayBuffer;
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -115,7 +224,20 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         // Upload the recording
         setIsUploading(true);
         try {
-          const response = await transcriptionsAPI.upload(audioFile, 'de');
+          let fileToUpload = audioFile;
+
+          // Compress if file is larger than 5MB
+          if (audioFile.size > 5 * 1024 * 1024) {
+            console.log('[RECORDING] File is large, compressing...');
+            try {
+              fileToUpload = await compressAudio(audioFile);
+            } catch (compressionError) {
+              console.error('[RECORDING] Compression failed, uploading original:', compressionError);
+              // Continue with original file if compression fails
+            }
+          }
+
+          const response = await transcriptionsAPI.upload(fileToUpload, 'de');
           await loadTranscriptions();
           
           if (response.status === 'completed' && response.transcription) {
@@ -178,7 +300,20 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
     setIsUploading(true);
     try {
-      const response = await transcriptionsAPI.upload(file, 'de');
+      let fileToUpload = file;
+
+      // Compress if file is larger than 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        console.log('[UPLOAD] File is large, compressing...');
+        try {
+          fileToUpload = await compressAudio(file);
+        } catch (compressionError) {
+          console.error('[UPLOAD] Compression failed, uploading original:', compressionError);
+          // Continue with original file if compression fails
+        }
+      }
+
+      const response = await transcriptionsAPI.upload(fileToUpload, 'de');
       
       // Reload transcriptions
       await loadTranscriptions();
