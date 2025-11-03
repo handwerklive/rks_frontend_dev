@@ -24,6 +24,10 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const [selectedVorlage, setSelectedVorlage] = useState<number | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+  const [isEditingTranscription, setIsEditingTranscription] = useState(false);
+  const [editedTranscription, setEditedTranscription] = useState('');
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,11 +205,51 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     try {
       const fullTranscription = await transcriptionsAPI.getById(item.id);
       setSelectedTranscription(fullTranscription);
+      setEditedTranscription(fullTranscription.transcription || '');
+      setIsEditingTranscription(false);
+      setFindText('');
+      setReplaceText('');
       setShowProcessDialog(true);
     } catch (error: any) {
       console.error('Error loading transcription:', error);
       alert('Fehler beim Laden der Transkription.');
     }
+  };
+
+  const handleFindReplace = () => {
+    if (!findText.trim()) {
+      alert('Bitte gib einen Suchtext ein.');
+      return;
+    }
+
+    const regex = new RegExp(findText, 'gi'); // Case-insensitive global replace
+    const newText = editedTranscription.replace(regex, replaceText);
+    const count = (editedTranscription.match(regex) || []).length;
+    
+    setEditedTranscription(newText);
+    
+    if (count > 0) {
+      alert(`${count} Vorkommen von "${findText}" wurden durch "${replaceText}" ersetzt.`);
+    } else {
+      alert(`"${findText}" wurde nicht gefunden.`);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (selectedTranscription) {
+      setSelectedTranscription({
+        ...selectedTranscription,
+        transcription: editedTranscription
+      });
+      setIsEditingTranscription(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditedTranscription(selectedTranscription?.transcription || '');
+    setIsEditingTranscription(false);
+    setFindText('');
+    setReplaceText('');
   };
 
   const handleProcessTranscription = async () => {
@@ -345,10 +389,74 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
             <div className="p-6 space-y-6">
               {/* Transcription Text */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Transkribierter Text</label>
-                <div className="bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto border border-gray-200">
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedTranscription.transcription}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">Transkribierter Text</label>
+                  <button
+                    onClick={() => setIsEditingTranscription(!isEditingTranscription)}
+                    className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium"
+                  >
+                    {isEditingTranscription ? '✓ Fertig' : '✏️ Bearbeiten'}
+                  </button>
                 </div>
+                
+                {isEditingTranscription ? (
+                  <div className="space-y-3">
+                    {/* Find & Replace */}
+                    <div className="bg-blue-50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-medium text-blue-900 mb-2">Suchen & Ersetzen</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={findText}
+                          onChange={(e) => setFindText(e.target.value)}
+                          placeholder="Suchen... (z.B. Cloud)"
+                          className="px-3 py-2 text-sm bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="text"
+                          value={replaceText}
+                          onChange={(e) => setReplaceText(e.target.value)}
+                          placeholder="Ersetzen... (z.B. PLAUD)"
+                          className="px-3 py-2 text-sm bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <button
+                        onClick={handleFindReplace}
+                        disabled={!findText.trim()}
+                        className="w-full px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        Alle ersetzen
+                      </button>
+                    </div>
+                    
+                    {/* Editable Textarea */}
+                    <textarea
+                      value={editedTranscription}
+                      onChange={(e) => setEditedTranscription(e.target.value)}
+                      className="w-full h-48 px-4 py-3 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] resize-none"
+                    />
+                    
+                    {/* Edit Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveEdit}
+                        className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                      >
+                        Änderungen übernehmen
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex-1 px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                      >
+                        Verwerfen
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto border border-gray-200">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedTranscription.transcription}</p>
+                  </div>
+                )}
               </div>
 
               {/* Processing Options */}
