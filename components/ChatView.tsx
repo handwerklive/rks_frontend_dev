@@ -23,9 +23,10 @@ interface ChatViewProps {
   waitingForInput?: string | null;  // Dialog mode waiting indicator
   settings: Settings;
   onUpdateSettings: (newSettings: Partial<Settings>) => void;
+  autoSendMessage?: string;  // Auto-send message on mount
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, loadingStatus, waitingForInput, settings }) => {
+const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, loadingStatus, waitingForInput, settings, autoSendMessage }) => {
     const [message, setMessage] = useState('');
     const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
     const [isListening, setIsListening] = useState(false);
@@ -41,6 +42,15 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     const listeningRef = useRef<boolean>(false);
     const restartTimerRef = useRef<number | null>(null);
 
+
+    // Auto-send message on mount if provided
+    useEffect(() => {
+        if (autoSendMessage && chatSession.messages.length === 0) {
+            console.log('[CHATVIEW] Auto-sending message:', autoSendMessage);
+            // Send message automatically
+            onSendMessage(chatSession.id, autoSendMessage, false, null);
+        }
+    }, [autoSendMessage, chatSession.id]);
 
     // Speech Recognition Setup
     useEffect(() => {
