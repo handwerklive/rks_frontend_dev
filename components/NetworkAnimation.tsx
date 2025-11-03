@@ -7,6 +7,8 @@ interface Node {
   vy: number;
   radius: number;
   opacity: number;
+  angle: number; // Angle from center for initial positioning
+  distance: number; // Distance from center
 }
 
 interface NetworkAnimationProps {
@@ -41,18 +43,25 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Create nodes
-    const nodeCount = Math.min(15, Math.floor((canvas.width * canvas.height) / 50000));
+    // Create nodes arranged around center (person icon)
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const nodeCount = 12;
     const nodes: Node[] = [];
     
     for (let i = 0; i < nodeCount; i++) {
+      const angle = (i / nodeCount) * Math.PI * 2;
+      const distance = 100 + Math.random() * 150;
+      
       nodes.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
+        x: centerX + Math.cos(angle) * distance,
+        y: centerY + Math.sin(angle) * distance,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
         radius: Math.random() * 3 + 2,
         opacity: 0,
+        angle: angle,
+        distance: distance,
       });
     }
     nodesRef.current = nodes;
@@ -78,6 +87,8 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
 
     const animate = () => {
       const elapsed = Date.now() - startTimeRef.current;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
       
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -91,6 +102,26 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
         // Fade out
         globalOpacity = (ANIMATION_DURATION - elapsed) / FADE_OUT_DURATION;
       }
+
+      // Draw person icon in center
+      const iconOpacity = Math.min(1, elapsed / 500) * globalOpacity;
+      const iconSize = 60;
+      
+      // Person icon (head + body)
+      ctx.fillStyle = `rgba(156, 163, 175, ${iconOpacity})`; // gray-400
+      
+      // Head
+      ctx.beginPath();
+      ctx.arc(centerX, centerY - iconSize * 0.25, iconSize * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Body (simplified torso)
+      ctx.beginPath();
+      ctx.arc(centerX, centerY + iconSize * 0.35, iconSize * 0.4, Math.PI, 0);
+      ctx.lineTo(centerX + iconSize * 0.4, centerY + iconSize * 0.6);
+      ctx.lineTo(centerX - iconSize * 0.4, centerY + iconSize * 0.6);
+      ctx.closePath();
+      ctx.fill();
 
       // Update and draw nodes
       nodes.forEach((node, i) => {

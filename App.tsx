@@ -47,9 +47,9 @@ const App: React.FC = () => {
     const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
     const [waitingForInput, setWaitingForInput] = useState<string | null>(null);
     const [showNetworkAnimation, setShowNetworkAnimation] = useState<boolean>(() => {
-        // Show animation only on first app load (not on every login)
+        // Show animation only on first app load when not logged in
         const hasSeenAnimation = sessionStorage.getItem('hasSeenNetworkAnimation');
-        return !hasSeenAnimation;
+        return !hasSeenAnimation && !localStorage.getItem('access_token');
     });
     
     // Pagination state
@@ -756,7 +756,7 @@ const App: React.FC = () => {
     
     return (
         <main className="h-dvh w-screen bg-gray-100 font-sans overflow-hidden">
-            {showNetworkAnimation && (
+            {showNetworkAnimation && !user && (
                 <NetworkAnimation
                     onComplete={() => {
                         setShowNetworkAnimation(false);
