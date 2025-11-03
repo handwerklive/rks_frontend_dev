@@ -29,7 +29,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<number | null>(null);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   // Filter out dialog mode vorlagen
   const availableVorlagen = vorlagen.filter(v => !v.is_dialog_mode);
@@ -44,12 +44,23 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     console.log('[TRANSCRIPTIONS] Vorlagen:', availableVorlagen.map(v => ({ id: v.id, name: v.name, is_dialog: v.is_dialog_mode })));
   }, [vorlagen, availableVorlagen]);
 
+  // Timer effect - updates every second when recording
+  useEffect(() => {
+    if (!isRecording || !recordingStartTimeRef.current) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current!) / 1000);
+      setRecordingDuration(elapsed);
+    }, 100); // Update every 100ms for smooth display
+
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
       if (mediaRecorderRef.current && isRecording) {
         mediaRecorderRef.current.stop();
       }
@@ -116,17 +127,9 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       };
 
       mediaRecorder.start();
-      setIsRecording(true);
+      recordingStartTimeRef.current = Date.now();
       setRecordingDuration(0);
-
-      // Start timer
-      timerIntervalRef.current = window.setInterval(() => {
-        setRecordingDuration(prev => {
-          const newValue = prev + 1;
-          console.log('[RECORDING] Timer tick:', newValue);
-          return newValue;
-        });
-      }, 1000);
+      setIsRecording(true);
     } catch (error) {
       console.error('Error accessing microphone:', error);
       alert('Fehler beim Zugriff auf das Mikrofon. Bitte erlaube den Mikrofon-Zugriff.');
@@ -137,11 +140,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
+      recordingStartTimeRef.current = null;
     }
   };
 
