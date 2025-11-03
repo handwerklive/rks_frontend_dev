@@ -218,7 +218,6 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   const handleFindReplace = () => {
     if (!findText.trim()) {
-      alert('Bitte gib einen Suchtext ein.');
       return;
     }
 
@@ -228,10 +227,10 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     
     setEditedTranscription(newText);
     
+    // Clear find/replace fields after successful replacement
     if (count > 0) {
-      alert(`${count} Vorkommen von "${findText}" wurden durch "${replaceText}" ersetzt.`);
-    } else {
-      alert(`"${findText}" wurde nicht gefunden.`);
+      setFindText('');
+      setReplaceText('');
     }
   };
 
@@ -409,14 +408,14 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                           type="text"
                           value={findText}
                           onChange={(e) => setFindText(e.target.value)}
-                          placeholder="Suchen... (z.B. Cloud)"
+                          placeholder="Suchen... (z.B. Müller)"
                           className="px-3 py-2 text-sm bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
                           type="text"
                           value={replaceText}
                           onChange={(e) => setReplaceText(e.target.value)}
-                          placeholder="Ersetzen... (z.B. PLAUD)"
+                          placeholder="Ersetzen... (z.B. Schmidt)"
                           className="px-3 py-2 text-sm bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
