@@ -121,7 +121,11 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
       // Start timer
       timerIntervalRef.current = window.setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
+        setRecordingDuration(prev => {
+          const newValue = prev + 1;
+          console.log('[RECORDING] Timer tick:', newValue);
+          return newValue;
+        });
       }, 1000);
     } catch (error) {
       console.error('Error accessing microphone:', error);
