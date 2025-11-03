@@ -24,7 +24,12 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const [selectedVorlage, setSelectedVorlage] = useState<number | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [useCustomPrompt, setUseCustomPrompt] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerIntervalRef = useRef<number | null>(null);
 
   // Filter out dialog mode vorlagen
   const availableVorlagen = vorlagen.filter(v => !v.is_dialog_mode);
@@ -38,6 +43,18 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     console.log('[TRANSCRIPTIONS] Available vorlagen (non-dialog):', availableVorlagen.length);
     console.log('[TRANSCRIPTIONS] Vorlagen:', availableVorlagen.map(v => ({ id: v.id, name: v.name, is_dialog: v.is_dialog_mode })));
   }, [vorlagen, availableVorlagen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [isRecording]);
 
   const loadTranscriptions = async () => {
     setIsLoading(true);
@@ -58,6 +75,76 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `recording_${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Upload the recording
+        setIsUploading(true);
+        try {
+          const response = await transcriptionsAPI.upload(audioFile, 'de');
+          await loadTranscriptions();
+          
+          if (response.status === 'completed' && response.transcription) {
+            setSelectedTranscription(response);
+            setShowProcessDialog(true);
+          }
+        } catch (error: any) {
+          console.error('Error uploading recording:', error);
+          alert('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message));
+        } finally {
+          setIsUploading(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      // Start timer
+      timerIntervalRef.current = window.setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Fehler beim Zugriff auf das Mikrofon. Bitte erlaube den Mikrofon-Zugriff.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+  };
+
+  const formatRecordingDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,35 +237,40 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
       console.log('[TRANSCRIPTIONS] Chat created:', newChat.id);
 
-      // Reset state before navigation
+      // Send message FIRST (but don't wait for response)
+      console.log('[TRANSCRIPTIONS] Sending message...');
+      chatsAPI.sendMessage({
+        chat_id: newChat.id,
+        message: message,
+        vorlage_id: vorlageId
+      }).catch(error => {
+        console.error('[TRANSCRIPTIONS] Error sending message:', error);
+      });
+
+      // Mark as used in background
+      transcriptionsAPI.markUsed(
+        selectedTranscription.id,
+        newChat.id,
+        vorlageId || undefined
+      ).catch(error => {
+        console.error('[TRANSCRIPTIONS] Error marking as used:', error);
+      });
+
+      // Reset state
       setSelectedTranscription(null);
       setSelectedVorlage(null);
       setCustomPrompt('');
       setUseCustomPrompt(false);
 
-      // Navigate IMMEDIATELY to chat
-      onNavigate(View.CHAT, undefined, { 
-        chatId: newChat.id,
-        vorlageId: vorlageId,
-        shouldLoadChat: true,
-        initialMessage: message  // Pass message to send after navigation
-      });
-
-      // Send message and mark as used in background (don't await)
-      chatsAPI.sendMessage({
-        chat_id: newChat.id,
-        message: message,
-        vorlage_id: vorlageId
-      }).then(() => {
-        console.log('[TRANSCRIPTIONS] Message sent');
-        return transcriptionsAPI.markUsed(
-          selectedTranscription.id,
-          newChat.id,
-          vorlageId || undefined
-        );
-      }).catch(error => {
-        console.error('[TRANSCRIPTIONS] Error sending message:', error);
-      });
+      // Wait a tiny bit for the message to be sent, then navigate
+      setTimeout(() => {
+        console.log('[TRANSCRIPTIONS] Navigating to chat...');
+        onNavigate(View.CHAT, undefined, { 
+          chatId: newChat.id,
+          vorlageId: vorlageId,
+          shouldLoadChat: true
+        });
+      }, 500);
     } catch (error: any) {
       console.error('Error processing transcription:', error);
       alert('Fehler beim Verarbeiten der Transkription.');
@@ -379,8 +471,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         backTargetView={View.HOME} 
       />
 
-      {/* Upload Section */}
-      <div className="p-4 border-b border-gray-200 bg-white">
+      {/* Upload & Recording Section */}
+      <div className="p-3 sm:p-4 border-b border-gray-200 bg-white space-y-3">
         <input
           type="file"
           ref={fileInputRef}
@@ -388,17 +480,44 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           className="hidden"
           accept="audio/mpeg,audio/mp3,audio/wav,audio/webm,audio/ogg,audio/m4a,audio/x-m4a,audio/mp4,.mp3,.wav,.webm,.ogg,.m4a,.mp4"
         />
-        <button
-          onClick={handleUploadClick}
-          disabled={isUploading}
-          className="group w-full flex items-center justify-center gap-3 h-14 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Audio-Datei hochladen"
-        >
-          <MicrophoneIcon className="w-6 h-6 transition-transform group-hover:scale-110" />
-          <span className="text-lg">{isUploading ? 'Wird hochgeladen...' : 'Audio-Datei hochladen'}</span>
-        </button>
-        <p className="text-xs text-center text-gray-500 mt-2 px-4">
-          Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 25 MB)
+        
+        {/* Buttons Grid - Responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Upload Button */}
+          <button
+            onClick={handleUploadClick}
+            disabled={isUploading || isRecording}
+            className="group flex items-center justify-center gap-2 sm:gap-3 h-12 sm:h-14 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Audio-Datei hochladen"
+          >
+            <MicrophoneIcon className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:scale-110" />
+            <span className="text-sm sm:text-base">{isUploading ? 'Lädt hoch...' : 'Datei hochladen'}</span>
+          </button>
+
+          {/* Recording Button */}
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isUploading}
+            className={`group flex items-center justify-center gap-2 sm:gap-3 h-12 sm:h-14 font-semibold rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
+              isRecording 
+                ? 'bg-red-500 text-white animate-pulse' 
+                : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-[var(--primary-color)]'
+            }`}
+            aria-label={isRecording ? 'Aufnahme stoppen' : 'Aufnahme starten'}
+          >
+            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-all ${
+              isRecording ? 'bg-white' : 'bg-red-500'
+            }`} />
+            <span className="text-sm sm:text-base">
+              {isRecording ? formatRecordingDuration(recordingDuration) : 'Aufnehmen'}
+            </span>
+          </button>
+        </div>
+
+        <p className="text-xs text-center text-gray-500 px-2 sm:px-4">
+          {isRecording 
+            ? '🔴 Aufnahme läuft - Klicke erneut zum Stoppen' 
+            : 'Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 25 MB)'}
         </p>
       </div>
 
