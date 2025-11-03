@@ -15,6 +15,7 @@ import LiquidGlassBackground from './components/LiquidGlassBackground';
 import FileView from './components/FileView';
 import TranscriptionsView from './components/TranscriptionsView';
 import Toast from './components/Toast';
+import NetworkAnimation from './components/NetworkAnimation';
 
 // Import Types
 import { View, User, Vorlage, ChatSession, Message, Settings, UserRole, UserStatus, AppFile } from './types';
@@ -45,6 +46,11 @@ const App: React.FC = () => {
     const [isFetchingChats, setIsFetchingChats] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
     const [waitingForInput, setWaitingForInput] = useState<string | null>(null);
+    const [showNetworkAnimation, setShowNetworkAnimation] = useState<boolean>(() => {
+        // Show animation only on first app load (not on every login)
+        const hasSeenAnimation = sessionStorage.getItem('hasSeenNetworkAnimation');
+        return !hasSeenAnimation;
+    });
     
     // Pagination state
     const [chatPage, setChatPage] = useState(1);
@@ -750,6 +756,16 @@ const App: React.FC = () => {
     
     return (
         <main className="h-dvh w-screen bg-gray-100 font-sans overflow-hidden">
+            {showNetworkAnimation && (
+                <NetworkAnimation
+                    onComplete={() => {
+                        setShowNetworkAnimation(false);
+                        sessionStorage.setItem('hasSeenNetworkAnimation', 'true');
+                    }}
+                    primaryColor={settings.primary_color || '#0066cc'}
+                    secondaryColor={settings.secondary_color || '#00aaff'}
+                />
+            )}
             <LiquidGlassBackground />
             <div className="relative z-10 w-full h-full bg-gray-50/50 backdrop-blur-lg">
                 {(isFetchingUsers || isFetchingVorlagen || isFetchingChats) && (
