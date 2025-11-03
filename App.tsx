@@ -396,20 +396,24 @@ const App: React.FC = () => {
             }
 
             const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
+            const decoder = new TextDecoder('utf-8');
             
             let streamedContent = '';
             let aiMessageId = `ai-${Date.now()}`;
             let actualChatId = chatId;
             let isFirstChunk = true;
+            let buffer = '';
 
             if (reader) {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // Process complete SSE messages
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
