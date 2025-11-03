@@ -227,7 +227,7 @@ export const logsAPI = {
 
 // Transcriptions API
 export const transcriptionsAPI = {
-  upload: async (audioFile: File, language: string = 'de') => {
+  upload: async (audioFile: File, language: string = 'de', onProgress?: (progress: number) => void) => {
     const formData = new FormData();
     formData.append('audio_file', audioFile);
     formData.append('language', language);
@@ -235,6 +235,13 @@ export const transcriptionsAPI = {
     const response = await apiClient.post('/api/transcriptions', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+      },
+      timeout: 300000, // 5 minutes for large files
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percentCompleted);
+        }
       },
     });
     return response.data;

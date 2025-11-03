@@ -30,6 +30,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const [replaceText, setReplaceText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -250,7 +251,10 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
             }
           }
 
-          const response = await transcriptionsAPI.upload(fileToUpload, 'de');
+          const response = await transcriptionsAPI.upload(fileToUpload, 'de', (progress) => {
+            setUploadProgress(progress);
+          });
+          setUploadProgress(0);
           await loadTranscriptions();
           
           if (response.status === 'completed' && response.transcription) {
@@ -331,7 +335,10 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         }
       }
 
-      const response = await transcriptionsAPI.upload(fileToUpload, 'de');
+      const response = await transcriptionsAPI.upload(fileToUpload, 'de', (progress) => {
+        setUploadProgress(progress);
+      });
+      setUploadProgress(0);
       
       // Reload transcriptions
       await loadTranscriptions();
@@ -743,7 +750,9 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
             aria-label="Audio-Datei hochladen"
           >
             <MicrophoneIcon className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:scale-110" />
-            <span className="text-sm sm:text-base">{isUploading ? 'Lädt hoch...' : 'Datei hochladen'}</span>
+            <span className="text-sm sm:text-base">
+              {isUploading ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Lädt hoch...') : 'Datei hochladen'}
+            </span>
           </button>
 
           {/* Recording Button */}
