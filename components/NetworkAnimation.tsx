@@ -46,19 +46,19 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
     // Create nodes arranged around center (person icon)
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const nodeCount = 12;
+    const nodeCount = 20; // Mehr Nodes
     const nodes: Node[] = [];
     
     for (let i = 0; i < nodeCount; i++) {
-      const angle = (i / nodeCount) * Math.PI * 2;
-      const distance = 100 + Math.random() * 150;
+      const angle = (i / nodeCount) * Math.PI * 2 + Math.random() * 0.3;
+      const distance = 80 + Math.random() * 200;
       
       nodes.push({
         x: centerX + Math.cos(angle) * distance,
         y: centerY + Math.sin(angle) * distance,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        radius: Math.random() * 3 + 2,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        radius: Math.random() * 4 + 2,
         opacity: 0,
         angle: angle,
         distance: distance,
@@ -67,10 +67,10 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
     nodesRef.current = nodes;
 
     // Animation constants
-    const FADE_IN_DURATION = 800;
-    const ANIMATION_DURATION = 2500;
-    const FADE_OUT_DURATION = 400;
-    const CONNECTION_DISTANCE = 150;
+    const FADE_IN_DURATION = 1500; // Längere Fade-in Phase
+    const ANIMATION_DURATION = 4000; // Längere Gesamtdauer
+    const FADE_OUT_DURATION = 500;
+    const CONNECTION_DISTANCE = 180; // Größere Verbindungsdistanz
 
     // Parse colors to RGB
     const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
@@ -137,19 +137,38 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
         node.x = Math.max(0, Math.min(canvas.width, node.x));
         node.y = Math.max(0, Math.min(canvas.height, node.y));
 
-        // Update node opacity (fade in individual nodes)
+        // Update node opacity (fade in individual nodes sequentially)
         if (elapsed < FADE_IN_DURATION) {
-          const nodeDelay = i * (FADE_IN_DURATION / nodes.length);
-          node.opacity = Math.min(1, Math.max(0, (elapsed - nodeDelay) / (FADE_IN_DURATION * 0.5)));
+          const nodeDelay = i * (FADE_IN_DURATION / nodes.length) * 0.8; // Mehr Verzögerung zwischen Nodes
+          node.opacity = Math.min(1, Math.max(0, (elapsed - nodeDelay) / (FADE_IN_DURATION * 0.3)));
         } else {
           node.opacity = 1;
         }
 
         // Pulsing effect
-        const pulse = Math.sin(elapsed * 0.003 + i) * 0.3 + 0.7;
+        const pulse = Math.sin(elapsed * 0.003 + i) * 0.2 + 0.8;
         const finalOpacity = node.opacity * globalOpacity * pulse;
 
-        // Draw connections
+        // Draw connections to center icon (first 3 nodes)
+        if (i < 3 && node.opacity > 0.3) {
+          const dx = centerX - node.x;
+          const dy = centerY - node.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const lineOpacity = finalOpacity * 0.7; // Deckender
+          
+          const gradient = ctx.createLinearGradient(node.x, node.y, centerX, centerY);
+          gradient.addColorStop(0, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, ${lineOpacity})`);
+          gradient.addColorStop(1, `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, ${lineOpacity})`);
+
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(node.x, node.y);
+          ctx.lineTo(centerX, centerY);
+          ctx.stroke();
+        }
+
+        // Draw connections between nodes
         nodes.forEach((otherNode, j) => {
           if (i >= j) return;
 
@@ -157,8 +176,8 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
           const dy = otherNode.y - node.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < CONNECTION_DISTANCE) {
-            const lineOpacity = (1 - distance / CONNECTION_DISTANCE) * finalOpacity * 0.4;
+          if (distance < CONNECTION_DISTANCE && node.opacity > 0.3 && otherNode.opacity > 0.3) {
+            const lineOpacity = (1 - distance / CONNECTION_DISTANCE) * finalOpacity * 0.65; // Deckender
             
             // Gradient from primary to secondary color
             const gradient = ctx.createLinearGradient(node.x, node.y, otherNode.x, otherNode.y);
@@ -166,7 +185,7 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
             gradient.addColorStop(1, `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, ${lineOpacity})`);
 
             ctx.strokeStyle = gradient;
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(node.x, node.y);
             ctx.lineTo(otherNode.x, otherNode.y);
@@ -175,14 +194,14 @@ const NetworkAnimation: React.FC<NetworkAnimationProps> = ({
         });
 
         // Draw node with glow
-        const nodeGradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius * 3);
-        nodeGradient.addColorStop(0, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, ${finalOpacity * 0.8})`);
-        nodeGradient.addColorStop(0.5, `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, ${finalOpacity * 0.4})`);
+        const nodeGradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius * 3.5);
+        nodeGradient.addColorStop(0, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, ${finalOpacity})`);
+        nodeGradient.addColorStop(0.4, `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, ${finalOpacity * 0.6})`);
         nodeGradient.addColorStop(1, `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, 0)`);
 
         ctx.fillStyle = nodeGradient;
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius * 3, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, node.radius * 3.5, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw solid node center
