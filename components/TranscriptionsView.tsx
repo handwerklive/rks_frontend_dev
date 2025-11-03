@@ -102,11 +102,16 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           const arrayBuffer = e.target?.result as ArrayBuffer;
           const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-          // Create offline context for compression (lower sample rate)
-          const targetSampleRate = 16000; // 16kHz is good for speech
+          // More aggressive compression for large files
+          const targetSampleRate = 16000; // 16kHz for speech
+          const maxDuration = 600; // Max 10 minutes
+          
+          // Trim if too long
+          const duration = Math.min(audioBuffer.duration, maxDuration);
+          
           const offlineContext = new OfflineAudioContext(
             1, // mono
-            audioBuffer.duration * targetSampleRate,
+            duration * targetSampleRate,
             targetSampleRate
           );
 
@@ -119,12 +124,18 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           // Render compressed audio
           const compressedBuffer = await offlineContext.startRendering();
 
-          // Convert to WAV format (smaller than original)
+          // Convert to WAV format with aggressive compression
           const wav = audioBufferToWav(compressedBuffer);
           const blob = new Blob([wav], { type: 'audio/wav' });
           const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.wav'), { type: 'audio/wav' });
 
           console.log(`[COMPRESSION] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB → Compressed: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+          
+          // Check if still too large after compression
+          if (compressedFile.size > 10 * 1024 * 1024) {
+            reject(new Error('Datei ist auch nach Komprimierung zu groß (max. 10MB nach Komprimierung)'));
+            return;
+          }
           
           resolve(compressedFile);
         } catch (error) {
@@ -226,14 +237,16 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         try {
           let fileToUpload = audioFile;
 
-          // Compress if file is larger than 5MB
-          if (audioFile.size > 5 * 1024 * 1024) {
-            console.log('[RECORDING] File is large, compressing...');
+          // Compress recordings larger than 2MB
+          if (audioFile.size > 2 * 1024 * 1024) {
+            console.log('[RECORDING] Compressing recording...');
             try {
               fileToUpload = await compressAudio(audioFile);
-            } catch (compressionError) {
-              console.error('[RECORDING] Compression failed, uploading original:', compressionError);
-              // Continue with original file if compression fails
+            } catch (compressionError: any) {
+              console.error('[RECORDING] Compression failed:', compressionError);
+              alert('Fehler bei der Komprimierung: ' + compressionError.message);
+              setIsUploading(false);
+              return;
             }
           }
 
@@ -292,9 +305,9 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       return;
     }
 
-    // Validate file size (25 MB)
-    if (file.size > 25 * 1024 * 1024) {
-      alert('Datei zu groß. Maximale Größe: 25 MB.');
+    // Validate file size (20 MB before compression)
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Datei zu groß. Maximale Größe: 20 MB.');
       return;
     }
 
@@ -302,14 +315,19 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     try {
       let fileToUpload = file;
 
-      // Compress if file is larger than 5MB
-      if (file.size > 5 * 1024 * 1024) {
-        console.log('[UPLOAD] File is large, compressing...');
+      // Compress files larger than 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        console.log('[UPLOAD] Compressing file...');
         try {
           fileToUpload = await compressAudio(file);
-        } catch (compressionError) {
-          console.error('[UPLOAD] Compression failed, uploading original:', compressionError);
-          // Continue with original file if compression fails
+        } catch (compressionError: any) {
+          console.error('[UPLOAD] Compression failed:', compressionError);
+          alert('Fehler bei der Komprimierung: ' + compressionError.message);
+          setIsUploading(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          return;
         }
       }
 
@@ -751,7 +769,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         <p className="text-xs text-center text-gray-500 px-2 sm:px-4">
           {isRecording 
             ? '🔴 Aufnahme läuft - Klicke erneut zum Stoppen' 
-            : 'Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 25 MB)'}
+            : 'Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 20 MB, max. 10 Min.)'}
         </p>
       </div>
 
