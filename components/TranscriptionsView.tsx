@@ -53,9 +53,14 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/m4a'];
-    if (!allowedTypes.includes(file.type)) {
+    // Validate file type - check MIME type and file extension
+    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/mp4'];
+    const allowedExtensions = ['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.mp4'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    const isValidType = allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension);
+    
+    if (!isValidType) {
       alert('Bitte lade nur Audio-Dateien hoch (MP3, WAV, WebM, OGG, M4A).');
       return;
     }
@@ -337,7 +342,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           ref={fileInputRef}
           onChange={handleFileChange}
           className="hidden"
-          accept="audio/mpeg,audio/mp3,audio/wav,audio/webm,audio/ogg,audio/m4a"
+          accept="audio/mpeg,audio/mp3,audio/wav,audio/webm,audio/ogg,audio/m4a,audio/x-m4a,audio/mp4,.mp3,.wav,.webm,.ogg,.m4a,.mp4"
         />
         <button
           onClick={handleUploadClick}
