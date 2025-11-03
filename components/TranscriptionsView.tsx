@@ -143,7 +143,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   const formatRecordingDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -237,14 +237,18 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
       console.log('[TRANSCRIPTIONS] Chat created:', newChat.id);
 
-      // Send message FIRST (but don't wait for response)
-      console.log('[TRANSCRIPTIONS] Sending message...');
-      chatsAPI.sendMessage({
-        chat_id: newChat.id,
-        message: message,
-        vorlage_id: vorlageId
-      }).catch(error => {
-        console.error('[TRANSCRIPTIONS] Error sending message:', error);
+      // Reset state
+      setSelectedTranscription(null);
+      setSelectedVorlage(null);
+      setCustomPrompt('');
+      setUseCustomPrompt(false);
+
+      // Navigate to chat immediately with the message to send
+      onNavigate(View.CHAT, undefined, { 
+        chatId: newChat.id,
+        vorlageId: vorlageId,
+        shouldLoadChat: false,  // Don't load - chat is empty
+        autoSendMessage: message  // Pass message to auto-send
       });
 
       // Mark as used in background
@@ -255,22 +259,6 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       ).catch(error => {
         console.error('[TRANSCRIPTIONS] Error marking as used:', error);
       });
-
-      // Reset state
-      setSelectedTranscription(null);
-      setSelectedVorlage(null);
-      setCustomPrompt('');
-      setUseCustomPrompt(false);
-
-      // Wait a tiny bit for the message to be sent, then navigate
-      setTimeout(() => {
-        console.log('[TRANSCRIPTIONS] Navigating to chat...');
-        onNavigate(View.CHAT, undefined, { 
-          chatId: newChat.id,
-          vorlageId: vorlageId,
-          shouldLoadChat: true
-        });
-      }, 500);
     } catch (error: any) {
       console.error('Error processing transcription:', error);
       alert('Fehler beim Verarbeiten der Transkription.');

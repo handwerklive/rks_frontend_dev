@@ -207,42 +207,56 @@ const App: React.FC = () => {
             } finally {
                 setIsFetchingVorlagen(false);
             }
-        } else if (targetView === View.CHAT && data?.chatId && data?.shouldLoadChat) {
-            // Load chat when navigating from transcriptions
+        } else if (targetView === View.CHAT && data?.chatId) {
+            // Handle chat navigation
             setCurrentChatId(data.chatId);
-            setIsLoading(true);
-            try {
-                console.log('[APP] Loading chat:', data.chatId);
-                const messages = await chatsAPI.getMessages(data.chatId);
-                console.log('[APP] Loaded messages:', messages.length);
-                
-                // Check if chat already exists in sessions
+            
+            if (data.shouldLoadChat) {
+                // Load existing chat messages
+                setIsLoading(true);
+                try {
+                    console.log('[APP] Loading chat:', data.chatId);
+                    const messages = await chatsAPI.getMessages(data.chatId);
+                    console.log('[APP] Loaded messages:', messages.length);
+                    
+                    const existingChat = chatSessions.find(cs => cs.id === data.chatId);
+                    if (existingChat) {
+                        setChatSessions(prev => prev.map(cs => 
+                            cs.id === data.chatId ? { ...cs, messages } : cs
+                        ));
+                    } else {
+                        const newChatSession: ChatSession = {
+                            id: data.chatId,
+                            title: 'Transkription',
+                            messages: messages,
+                            vorlage_id: data.vorlageId || null,
+                            created_at: new Date().toISOString(),
+                        };
+                        setChatSessions(prev => [newChatSession, ...prev]);
+                    }
+                } catch (error: any) {
+                    console.error('[APP] Error loading chat:', error);
+                    showToast('Fehler beim Laden des Chats: ' + (error.response?.data?.detail || error.message));
+                } finally {
+                    setIsLoading(false);
+                }
+            } else {
+                // New chat from transcription - add empty chat
                 const existingChat = chatSessions.find(cs => cs.id === data.chatId);
-                if (existingChat) {
-                    // Update existing chat with messages
-                    setChatSessions(prev => prev.map(cs => 
-                        cs.id === data.chatId ? { ...cs, messages } : cs
-                    ));
-                } else {
-                    // Add new chat to sessions
+                if (!existingChat) {
                     const newChatSession: ChatSession = {
                         id: data.chatId,
                         title: 'Transkription',
-                        messages: messages,
+                        messages: [],
                         vorlage_id: data.vorlageId || null,
                         created_at: new Date().toISOString(),
                     };
                     setChatSessions(prev => [newChatSession, ...prev]);
                 }
-                
-                setView(targetView);
-                setViewData(data);
-            } catch (error: any) {
-                console.error('[APP] Error loading chat:', error);
-                showToast('Fehler beim Laden des Chats: ' + (error.response?.data?.detail || error.message));
-            } finally {
-                setIsLoading(false);
             }
+            
+            setView(targetView);
+            setViewData(data);
         } else {
             setView(targetView);
             setViewData(data);
@@ -715,7 +729,20 @@ const App: React.FC = () => {
                     handleNavigate(View.HOME);
                     return null;
                 }
-                return <ChatView chatSession={currentChatSession} vorlage={currentVorlage} onSendMessage={handleSendMessage} onNavigate={handleNavigate} onLogout={handleLogout} isLoading={isLoading} isLoadingTimeout={isLoadingTimeout} loadingStatus={loadingStatus} waitingForInput={waitingForInput} settings={settings} onUpdateSettings={updateSettings} />;
+                return <ChatView 
+                    chatSession={currentChatSession} 
+                    vorlage={currentVorlage} 
+                    onSendMessage={handleSendMessage} 
+                    onNavigate={handleNavigate} 
+                    onLogout={handleLogout} 
+                    isLoading={isLoading} 
+                    isLoadingTimeout={isLoadingTimeout} 
+                    loadingStatus={loadingStatus} 
+                    waitingForInput={waitingForInput} 
+                    settings={settings} 
+                    onUpdateSettings={updateSettings}
+                    autoSendMessage={viewData?.autoSendMessage}
+                />;
             default:
                 return <LoginView onLogin={handleLogin} onRegister={handleRegister} onNavigate={handleNavigate} />;
         }
