@@ -150,36 +150,35 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
       console.log('[TRANSCRIPTIONS] Chat created:', newChat.id);
 
-      // Send message immediately
-      await chatsAPI.sendMessage({
-        chat_id: newChat.id,
-        message: message,
-        vorlage_id: vorlageId
-      });
-
-      console.log('[TRANSCRIPTIONS] Message sent');
-
-      // Mark transcription as used
-      await transcriptionsAPI.markUsed(
-        selectedTranscription.id,
-        newChat.id,
-        vorlageId || undefined
-      );
-
-      console.log('[TRANSCRIPTIONS] Navigating to chat:', newChat.id);
-
-      // Navigate to chat with proper data
-      onNavigate(View.CHAT, undefined, { 
-        chatId: newChat.id,
-        vorlageId: vorlageId,
-        shouldLoadChat: true
-      });
-
-      // Reset state
+      // Reset state before navigation
       setSelectedTranscription(null);
       setSelectedVorlage(null);
       setCustomPrompt('');
       setUseCustomPrompt(false);
+
+      // Navigate IMMEDIATELY to chat
+      onNavigate(View.CHAT, undefined, { 
+        chatId: newChat.id,
+        vorlageId: vorlageId,
+        shouldLoadChat: true,
+        initialMessage: message  // Pass message to send after navigation
+      });
+
+      // Send message and mark as used in background (don't await)
+      chatsAPI.sendMessage({
+        chat_id: newChat.id,
+        message: message,
+        vorlage_id: vorlageId
+      }).then(() => {
+        console.log('[TRANSCRIPTIONS] Message sent');
+        return transcriptionsAPI.markUsed(
+          selectedTranscription.id,
+          newChat.id,
+          vorlageId || undefined
+        );
+      }).catch(error => {
+        console.error('[TRANSCRIPTIONS] Error sending message:', error);
+      });
     } catch (error: any) {
       console.error('Error processing transcription:', error);
       alert('Fehler beim Verarbeiten der Transkription.');
