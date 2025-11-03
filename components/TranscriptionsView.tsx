@@ -236,6 +236,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       });
 
       console.log('[TRANSCRIPTIONS] Chat created:', newChat.id);
+      console.log('[TRANSCRIPTIONS] Chat vorlage_id:', newChat.vorlage_id);
 
       // Reset state
       setSelectedTranscription(null);
@@ -246,7 +247,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       // Navigate to chat immediately with the message to send
       onNavigate(View.CHAT, undefined, { 
         chatId: newChat.id,
-        vorlageId: vorlageId,
+        vorlageId: newChat.vorlage_id || vorlageId,  // Use vorlage_id from response
         shouldLoadChat: false,  // Don't load - chat is empty
         autoSendMessage: message  // Pass message to auto-send
       });
