@@ -77,15 +77,6 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       return;
     }
 
-    // Show confirmation dialog before upload
-    const confirmed = window.confirm(`Möchtest du die Datei "${file.name}" hochladen und transkribieren?`);
-    if (!confirmed) {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      return;
-    }
-
     setIsUploading(true);
     try {
       const response = await transcriptionsAPI.upload(file, 'de');
