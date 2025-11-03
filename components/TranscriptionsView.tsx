@@ -31,7 +31,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   useEffect(() => {
     loadTranscriptions();
-  }, []);
+    console.log('[TRANSCRIPTIONS] Available vorlagen:', availableVorlagen.length, availableVorlagen);
+  }, [vorlagen]);
 
   const loadTranscriptions = async () => {
     setIsLoading(true);
@@ -68,6 +69,15 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     // Validate file size (25 MB)
     if (file.size > 25 * 1024 * 1024) {
       alert('Datei zu groß. Maximale Größe: 25 MB.');
+      return;
+    }
+
+    // Show confirmation dialog before upload
+    const confirmed = window.confirm(`Möchtest du die Datei "${file.name}" hochladen und transkribieren?`);
+    if (!confirmed) {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
@@ -112,7 +122,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
     try {
       let chatTitle = 'Transkription';
-      let vorlageId = null;
+      let vorlageId: number | null = null;
       let message = selectedTranscription.transcription;
 
       if (useCustomPrompt && customPrompt.trim()) {
@@ -126,9 +136,19 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         chatTitle = `Transkription: ${vorlage?.name || 'Vorlage'}`;
       }
 
+      // Close dialog first
+      setShowProcessDialog(false);
+
       // Create new chat
       const newChat = await chatsAPI.create({
         title: chatTitle,
+        vorlage_id: vorlageId
+      });
+
+      // Send message immediately
+      await chatsAPI.sendMessage({
+        chat_id: newChat.id,
+        message: message,
         vorlage_id: vorlageId
       });
 
@@ -139,15 +159,10 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         vorlageId || undefined
       );
 
-      // Navigate to chat and send message
-      onNavigate(View.CHAT, undefined, { 
-        chatId: newChat.id,
-        initialMessage: message,
-        vorlageId: vorlageId
-      });
+      // Navigate to chat
+      onNavigate(View.CHAT, undefined, { chatId: newChat.id });
 
-      // Close dialog
-      setShowProcessDialog(false);
+      // Reset state
       setSelectedTranscription(null);
       setSelectedVorlage(null);
       setCustomPrompt('');
@@ -155,6 +170,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     } catch (error: any) {
       console.error('Error processing transcription:', error);
       alert('Fehler beim Verarbeiten der Transkription.');
+      // Reopen dialog on error
+      setShowProcessDialog(true);
     }
   };
 
