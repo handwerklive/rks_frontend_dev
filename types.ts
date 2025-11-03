@@ -9,6 +9,7 @@ export enum View {
   CHAT = 'chat',
   CHAT_HISTORY = 'chat_history',
   FILES = 'files',
+  TRANSCRIPTIONS = 'transcriptions',
 }
 
 export enum UserRole {
@@ -140,4 +141,35 @@ export interface UserSettings {
   signature: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface Transcription {
+  id: number;
+  user_id: string;
+  audio_file_path: string;
+  audio_bucket: string;
+  audio_filename: string;
+  audio_mime_type: string | null;
+  audio_size_bytes: number | null;
+  audio_duration_seconds: number | null;
+  transcription: string | null;
+  language: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message: string | null;
+  model_used: string | null;
+  confidence_score: number | null;
+  used_in_chat_id: number | null;
+  used_with_vorlage_id: number | null;
+  created_at: string;
+  updated_at: string;
+  transcribed_at: string | null;
+}
+
+export interface TranscriptionListItem {
+  id: number;
+  audio_filename: string;
+  transcription_preview: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  audio_duration_seconds: number | null;
+  created_at: string;
 }

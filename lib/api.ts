@@ -225,5 +225,53 @@ export const logsAPI = {
   },
 };
 
+// Transcriptions API
+export const transcriptionsAPI = {
+  upload: async (audioFile: File, language: string = 'de') => {
+    const formData = new FormData();
+    formData.append('audio_file', audioFile);
+    formData.append('language', language);
+    
+    const response = await apiClient.post('/api/transcriptions', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  
+  getAll: async (limit: number = 25, offset: number = 0, statusFilter?: string) => {
+    const params: any = { limit, offset };
+    if (statusFilter) {
+      params.status_filter = statusFilter;
+    }
+    const response = await apiClient.get('/api/transcriptions', { params });
+    return response.data;
+  },
+  
+  getById: async (id: number) => {
+    const response = await apiClient.get(`/api/transcriptions/${id}`);
+    return response.data;
+  },
+  
+  getAudioUrl: async (id: number, expiresIn: number = 3600) => {
+    const response = await apiClient.get(`/api/transcriptions/${id}/audio-url`, {
+      params: { expires_in: expiresIn }
+    });
+    return response.data;
+  },
+  
+  markUsed: async (id: number, chatId?: number, vorlageId?: number) => {
+    const response = await apiClient.patch(`/api/transcriptions/${id}/mark-used`, null, {
+      params: { chat_id: chatId, vorlage_id: vorlageId }
+    });
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    await apiClient.delete(`/api/transcriptions/${id}`);
+  },
+};
+
 export default apiClient;
 

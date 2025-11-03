@@ -13,6 +13,7 @@ import ChatView from './components/ChatView';
 import ChatHistoryView from './components/ChatHistoryView';
 import LiquidGlassBackground from './components/LiquidGlassBackground';
 import FileView from './components/FileView';
+import TranscriptionsView from './components/TranscriptionsView';
 import Toast from './components/Toast';
 
 // Import Types
@@ -655,6 +656,8 @@ const App: React.FC = () => {
                  />;
             case View.FILES:
                 return <FileView files={files} onAddFile={handleAddFile} onDeleteFile={handleDeleteFile} onNavigate={handleNavigate} onLogout={handleLogout} />;
+            case View.TRANSCRIPTIONS:
+                return <TranscriptionsView vorlagen={vorlagen} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.CHAT:
                 if (!currentChatSession) {
                     // Fallback if no chat is selected, maybe something went wrong
