@@ -192,6 +192,42 @@ const App: React.FC = () => {
             } finally {
                 setIsFetchingChats(false);
             }
+        } else if (targetView === View.CHAT && data?.chatId && data?.shouldLoadChat) {
+            // Load chat when navigating from transcriptions
+            setCurrentChatId(data.chatId);
+            setIsLoading(true);
+            try {
+                console.log('[APP] Loading chat:', data.chatId);
+                const messages = await chatsAPI.getMessages(data.chatId);
+                console.log('[APP] Loaded messages:', messages.length);
+                
+                // Check if chat already exists in sessions
+                const existingChat = chatSessions.find(cs => cs.id === data.chatId);
+                if (existingChat) {
+                    // Update existing chat with messages
+                    setChatSessions(prev => prev.map(cs => 
+                        cs.id === data.chatId ? { ...cs, messages } : cs
+                    ));
+                } else {
+                    // Add new chat to sessions
+                    const newChatSession: ChatSession = {
+                        id: data.chatId,
+                        title: 'Transkription',
+                        messages: messages,
+                        vorlage_id: data.vorlageId || null,
+                        created_at: new Date().toISOString(),
+                    };
+                    setChatSessions(prev => [newChatSession, ...prev]);
+                }
+                
+                setView(targetView);
+                setViewData(data);
+            } catch (error: any) {
+                console.error('[APP] Error loading chat:', error);
+                showToast('Fehler beim Laden des Chats: ' + (error.response?.data?.detail || error.message));
+            } finally {
+                setIsLoading(false);
+            }
         } else {
             setView(targetView);
             setViewData(data);

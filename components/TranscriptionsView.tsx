@@ -37,10 +37,15 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const loadTranscriptions = async () => {
     setIsLoading(true);
     try {
+      console.log('[TRANSCRIPTIONS] Loading transcriptions...');
       const response = await transcriptionsAPI.getAll(100, 0);
+      console.log('[TRANSCRIPTIONS] Response:', response);
       setTranscriptions(response.items || []);
+      console.log('[TRANSCRIPTIONS] Loaded transcriptions:', response.items?.length || 0);
     } catch (error: any) {
-      console.error('Error loading transcriptions:', error);
+      console.error('[TRANSCRIPTIONS] Error loading transcriptions:', error);
+      console.error('[TRANSCRIPTIONS] Error details:', error.response?.data);
+      alert('Fehler beim Laden der Transkriptionen: ' + (error.response?.data?.detail || error.message));
     } finally {
       setIsLoading(false);
     }
@@ -139,11 +144,15 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       // Close dialog first
       setShowProcessDialog(false);
 
+      console.log('[TRANSCRIPTIONS] Creating chat with vorlage:', vorlageId);
+
       // Create new chat
       const newChat = await chatsAPI.create({
         title: chatTitle,
         vorlage_id: vorlageId
       });
+
+      console.log('[TRANSCRIPTIONS] Chat created:', newChat.id);
 
       // Send message immediately
       await chatsAPI.sendMessage({
@@ -152,6 +161,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         vorlage_id: vorlageId
       });
 
+      console.log('[TRANSCRIPTIONS] Message sent');
+
       // Mark transcription as used
       await transcriptionsAPI.markUsed(
         selectedTranscription.id,
@@ -159,8 +170,14 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         vorlageId || undefined
       );
 
-      // Navigate to chat
-      onNavigate(View.CHAT, undefined, { chatId: newChat.id });
+      console.log('[TRANSCRIPTIONS] Navigating to chat:', newChat.id);
+
+      // Navigate to chat with proper data
+      onNavigate(View.CHAT, undefined, { 
+        chatId: newChat.id,
+        vorlageId: vorlageId,
+        shouldLoadChat: true
+      });
 
       // Reset state
       setSelectedTranscription(null);
