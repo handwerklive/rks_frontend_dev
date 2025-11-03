@@ -192,6 +192,21 @@ const App: React.FC = () => {
             } finally {
                 setIsFetchingChats(false);
             }
+        } else if (targetView === View.TRANSCRIPTIONS) {
+            // Load vorlagen when navigating to transcriptions
+            setIsFetchingVorlagen(true);
+            try {
+                const response = await vorlagenAPI.getAll();
+                setVorlagen(response.items || []);
+                setView(targetView);
+                setViewData(data);
+            } catch (error: any) {
+                console.error('Error fetching vorlagen:', error);
+                setView(targetView);
+                setViewData(data);
+            } finally {
+                setIsFetchingVorlagen(false);
+            }
         } else if (targetView === View.CHAT && data?.chatId && data?.shouldLoadChat) {
             // Load chat when navigating from transcriptions
             setCurrentChatId(data.chatId);

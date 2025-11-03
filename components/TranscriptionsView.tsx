@@ -31,8 +31,13 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   useEffect(() => {
     loadTranscriptions();
-    console.log('[TRANSCRIPTIONS] Available vorlagen:', availableVorlagen.length, availableVorlagen);
-  }, [vorlagen]);
+  }, []);
+
+  useEffect(() => {
+    console.log('[TRANSCRIPTIONS] Total vorlagen:', vorlagen.length);
+    console.log('[TRANSCRIPTIONS] Available vorlagen (non-dialog):', availableVorlagen.length);
+    console.log('[TRANSCRIPTIONS] Vorlagen:', availableVorlagen.map(v => ({ id: v.id, name: v.name, is_dialog: v.is_dialog_mode })));
+  }, [vorlagen, availableVorlagen]);
 
   const loadTranscriptions = async () => {
     setIsLoading(true);
@@ -284,16 +289,31 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                   </div>
                   
                   {!useCustomPrompt && (
-                    <select
-                      value={selectedVorlage || ''}
-                      onChange={(e) => setSelectedVorlage(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
-                    >
-                      <option value="">Vorlage auswählen...</option>
-                      {availableVorlagen.map(v => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))}
-                    </select>
+                    <div>
+                      <select
+                        value={selectedVorlage || ''}
+                        onChange={(e) => {
+                          console.log('[TRANSCRIPTIONS] Selected vorlage:', e.target.value);
+                          setSelectedVorlage(e.target.value ? Number(e.target.value) : null);
+                        }}
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+                      >
+                        <option value="">Vorlage auswählen...</option>
+                        {availableVorlagen.map(v => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                      {availableVorlagen.length === 0 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Keine Vorlagen verfügbar. Bitte erstelle zuerst eine Vorlage (ohne Dialog-Modus).
+                        </p>
+                      )}
+                      {availableVorlagen.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {availableVorlagen.length} Vorlage(n) verfügbar
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 
