@@ -21,7 +21,7 @@ const HomeView: React.FC<HomeViewProps> = ({ user, vorlagen, onNavigate, onLogou
     
     const menuItems = [
         { view: View.VORLAGEN_LIST, label: 'Vorlagen', icon: <LayersIcon className="w-8 h-8"/>, description: "Alle Vorlagen durchsuchen und verwalten." },
-        { view: View.TRANSCRIPTIONS, label: 'Audio-Transkriptionen', icon: <MicrophoneIcon className="w-8 h-8"/>, description: "Audio-Dateien hochladen und transkribieren." },
+        { view: View.TRANSCRIPTIONS, label: 'Audio-Transkriptionen', icon: <MicrophoneIcon className="w-8 h-8"/>, description: "Audio aufnehmen oder hochladen und transkribieren." },
         { view: View.CHAT_HISTORY, label: 'Chat-Verlauf', icon: <HistoryIcon className="w-8 h-8"/>, description: "Bisherige Konversationen ansehen." },
         { view: View.SETTINGS, label: 'Meine Einstellungen', icon: <SettingsIcon className="w-8 h-8"/>, description: "Persönliche KI-Anweisungen und Präferenzen." },
     ];
