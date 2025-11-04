@@ -534,9 +534,9 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                     className="h-5 w-5 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-700">OpenAI Streaming aktivieren</span>
+                    <span className="text-sm font-medium text-gray-700">Streaming aktivieren</span>
                     <p className="text-xs text-gray-500">
-                      Wenn aktiviert, werden AI-Antworten in Echtzeit gestreamt (empfohlen für bessere UX)
+                      Wenn aktiviert, werden AI-Antworten in Echtzeit gestreamt (gilt für OpenAI und Claude, empfohlen für bessere UX)
                     </p>
                   </div>
                 </label>
