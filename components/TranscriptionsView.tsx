@@ -31,6 +31,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -72,6 +73,11 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     };
   }, [isRecording]);
 
+  const showToast = (message: string, type: 'error' | 'success' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const loadTranscriptions = async () => {
     setIsLoading(true);
     try {
@@ -82,8 +88,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       console.log('[TRANSCRIPTIONS] Loaded transcriptions:', response.items?.length || 0);
     } catch (error: any) {
       console.error('[TRANSCRIPTIONS] Error loading transcriptions:', error);
-      console.error('[TRANSCRIPTIONS] Error details:', error.response?.data);
-      alert('Fehler beim Laden der Transkriptionen: ' + (error.response?.data?.detail || error.message));
+      showToast('Fehler beim Laden der Transkriptionen: ' + (error.response?.data?.detail || error.message), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -245,7 +250,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
               fileToUpload = await compressAudio(audioFile);
             } catch (compressionError: any) {
               console.error('[RECORDING] Compression failed:', compressionError);
-              alert('Fehler bei der Komprimierung: ' + compressionError.message);
+              showToast('Fehler bei der Komprimierung: ' + compressionError.message, 'error');
               setIsUploading(false);
               return;
             }
@@ -263,7 +268,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           }
         } catch (error: any) {
           console.error('Error uploading recording:', error);
-          alert('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message));
+          showToast('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message), 'error');
         } finally {
           setIsUploading(false);
         }
@@ -275,7 +280,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       setIsRecording(true);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('Fehler beim Zugriff auf das Mikrofon. Bitte erlaube den Mikrofon-Zugriff.');
+      showToast('Fehler beim Zugriff auf das Mikrofon. Bitte erlaube den Mikrofon-Zugriff.', 'error');
     }
   };
 
@@ -305,13 +310,13 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     const isValidType = allowedTypes.includes(file.type) || allowedExtensions.includes(fileExtension);
     
     if (!isValidType) {
-      alert('Bitte lade nur Audio-Dateien hoch (MP3, WAV, WebM, OGG, M4A).');
+      showToast('Bitte lade nur Audio-Dateien hoch (MP3, WAV, WebM, OGG, M4A).', 'error');
       return;
     }
 
-    // Validate file size (20 MB before compression)
-    if (file.size > 20 * 1024 * 1024) {
-      alert('Datei zu groß. Maximale Größe: 20 MB.');
+    // Validate file size (5 MB before compression)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Datei zu groß. Maximale Größe: 5 MB.', 'error');
       return;
     }
 
@@ -326,7 +331,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           fileToUpload = await compressAudio(file);
         } catch (compressionError: any) {
           console.error('[UPLOAD] Compression failed:', compressionError);
-          alert('Fehler bei der Komprimierung: ' + compressionError.message);
+          showToast('Fehler bei der Komprimierung: ' + compressionError.message, 'error');
           setIsUploading(false);
           if (fileInputRef.current) {
             fileInputRef.current.value = '';
@@ -350,7 +355,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       }
     } catch (error: any) {
       console.error('Error uploading file:', error);
-      alert('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message));
+      showToast('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message), 'error');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -372,7 +377,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       setShowProcessDialog(true);
     } catch (error: any) {
       console.error('Error loading transcription:', error);
-      alert('Fehler beim Laden der Transkription.');
+      showToast('Fehler beim Laden der Transkription.', 'error');
     }
   };
 
@@ -468,7 +473,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       });
     } catch (error: any) {
       console.error('Error processing transcription:', error);
-      alert('Fehler beim Verarbeiten der Transkription.');
+      showToast('Fehler beim Verarbeiten der Transkription.', 'error');
       // Reopen dialog on error
       setShowProcessDialog(true);
     }
@@ -483,7 +488,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       setTranscriptionToDelete(null);
     } catch (error: any) {
       console.error('Error deleting transcription:', error);
-      alert('Fehler beim Löschen der Transkription.');
+      showToast('Fehler beim Löschen der Transkription.', 'error');
     }
   };
 
@@ -525,6 +530,44 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   return (
     <div className="flex flex-col h-full text-gray-900">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[100] animate-fade-in-view">
+          <div className={`px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px] max-w-md ${
+            toast.type === 'error' ? 'bg-red-500 text-white' :
+            toast.type === 'success' ? 'bg-green-500 text-white' :
+            'bg-blue-500 text-white'
+          }`}>
+            <div className="flex-shrink-0">
+              {toast.type === 'error' && (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              {toast.type === 'success' && (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {toast.type === 'info' && (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            </div>
+            <p className="flex-1 text-sm font-medium">{toast.message}</p>
+            <button
+              onClick={() => setToast(null)}
+              className="flex-shrink-0 hover:opacity-70 transition-opacity"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={!!transcriptionToDelete}
@@ -778,7 +821,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         <p className="text-xs text-center text-gray-500 px-2 sm:px-4">
           {isRecording 
             ? '🔴 Aufnahme läuft - Klicke erneut zum Stoppen' 
-            : 'Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 20 MB, max. 10 Min.)'}
+            : 'Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 5 MB, max. 10 Min.)'}
         </p>
       </div>
 
