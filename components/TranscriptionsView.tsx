@@ -98,6 +98,22 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     fileInputRef.current?.click();
   };
 
+  const handleNavigate = (view: View, vorlage?: Vorlage, data?: any) => {
+    if (isRecording) {
+      showToast('Bitte stoppe zuerst die Aufnahme.', 'info');
+      return;
+    }
+    onNavigate(view, vorlage, data);
+  };
+
+  const handleLogout = () => {
+    if (isRecording) {
+      showToast('Bitte stoppe zuerst die Aufnahme.', 'info');
+      return;
+    }
+    onLogout();
+  };
+
   const compressAudio = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -366,6 +382,10 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   const handleTranscriptionClick = async (item: TranscriptionListItem) => {
     if (item.status !== 'completed') return;
+    if (isRecording) {
+      showToast('Bitte stoppe zuerst die Aufnahme.', 'info');
+      return;
+    }
     
     try {
       const fullTranscription = await transcriptionsAPI.getById(item.id);
@@ -767,8 +787,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
       <Header 
         title="Audio-Transkriptionen" 
-        onNavigate={onNavigate} 
-        onLogout={onLogout} 
+        onNavigate={handleNavigate} 
+        onLogout={handleLogout} 
         showBackButton 
         backTargetView={View.HOME} 
       />
@@ -842,9 +862,9 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
             <div
               key={item.id}
               className={`group w-full p-4 bg-white rounded-2xl border border-gray-200 transition-all duration-300 ${
-                item.status === 'completed' ? 'hover:shadow-md hover:border-[var(--primary-color)]/50 cursor-pointer' : ''
-              }`}
-              onClick={() => item.status === 'completed' && handleTranscriptionClick(item)}
+                item.status === 'completed' && !isRecording ? 'hover:shadow-md hover:border-[var(--primary-color)]/50 cursor-pointer' : ''
+              } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => item.status === 'completed' && !isRecording && handleTranscriptionClick(item)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -874,9 +894,16 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (isRecording) {
+                      showToast('Bitte stoppe zuerst die Aufnahme.', 'info');
+                      return;
+                    }
                     setTranscriptionToDelete(item);
                   }}
-                  className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100/60 flex items-center justify-center text-red-600 hover:bg-red-200/80 transition-colors"
+                  disabled={isRecording}
+                  className={`flex-shrink-0 w-10 h-10 rounded-full bg-red-100/60 flex items-center justify-center text-red-600 transition-colors ${
+                    isRecording ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-200/80'
+                  }`}
                   aria-label="Transkription löschen"
                 >
                   <TrashIcon className="w-5 h-5" />
