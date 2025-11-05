@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Transcription, TranscriptionListItem, Vorlage } from '../types';
 import Header from './Header';
-import { transcriptionsAPI, chatsAPI } from '../lib/api';
+import { transcriptionsAPI, chatsAPI, notebooksAPI } from '../lib/api';
 import ConfirmationDialog from './ConfirmationDialog';
 import MicrophoneIcon from './icons/MicrophoneIcon';
 import TrashIcon from './icons/TrashIcon';
@@ -32,6 +32,9 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
+  const [notebookPages, setNotebookPages] = useState<any[]>([]);
+  const [selectedNotebookPage, setSelectedNotebookPage] = useState<number | null>(null);
+  const [useNotebook, setUseNotebook] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -42,6 +45,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
   useEffect(() => {
     loadTranscriptions();
+    loadNotebookPages();
   }, []);
 
   useEffect(() => {
@@ -76,6 +80,15 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const showToast = (message: string, type: 'error' | 'success' | 'info' = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const loadNotebookPages = async () => {
+    try {
+      const response = await notebooksAPI.getAllPages(100, 0);
+      setNotebookPages(response.items || []);
+    } catch (error) {
+      console.error('[TRANSCRIPTIONS] Error loading notebook pages:', error);
+    }
   };
 
   const loadTranscriptions = async () => {
@@ -436,8 +449,35 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     setReplaceText('');
   };
 
+  const handleAddToNotebook = async () => {
+    if (!selectedTranscription || !selectedNotebookPage) return;
+
+    try {
+      await transcriptionsAPI.addToNotebook(selectedTranscription.id, selectedNotebookPage);
+      showToast('Transkription zum Notizbuch hinzugefügt', 'success');
+      
+      // Close dialog and reset
+      setShowProcessDialog(false);
+      setSelectedTranscription(null);
+      setSelectedNotebookPage(null);
+      setUseNotebook(false);
+      
+      // Reload transcriptions to update "used" status
+      await loadTranscriptions();
+    } catch (error: any) {
+      console.error('[TRANSCRIPTIONS] Error adding to notebook:', error);
+      showToast(error.response?.data?.detail || 'Fehler beim Hinzufügen zum Notizbuch', 'error');
+    }
+  };
+
   const handleProcessTranscription = async () => {
     if (!selectedTranscription || !selectedTranscription.transcription) return;
+
+    // Handle notebook option
+    if (useNotebook) {
+      await handleAddToNotebook();
+      return;
+    }
 
     try {
       let chatTitle = 'Transkription';
@@ -549,7 +589,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   };
 
   return (
-    <div className="flex flex-col h-full text-gray-900">
+    <div className="flex flex-col h-full text-gray-900 overflow-hidden">
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-4 right-4 z-[100] animate-fade-in-view">
@@ -737,8 +777,11 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                       type="radio"
                       id="use-custom"
                       name="processing-option"
-                      checked={useCustomPrompt}
-                      onChange={() => setUseCustomPrompt(true)}
+                      checked={useCustomPrompt && !useNotebook}
+                      onChange={() => {
+                        setUseCustomPrompt(true);
+                        setUseNotebook(false);
+                      }}
                       className="w-4 h-4 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
                     />
                     <label htmlFor="use-custom" className="text-sm font-medium text-gray-900">
@@ -746,7 +789,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                     </label>
                   </div>
                   
-                  {useCustomPrompt && (
+                  {useCustomPrompt && !useNotebook && (
                     <textarea
                       value={customPrompt}
                       onChange={(e) => setCustomPrompt(e.target.value)}
@@ -754,6 +797,51 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                       rows={4}
                       className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] resize-none"
                     />
+                  )}
+                </div>
+
+                {/* Option 3: Add to Notebook */}
+                <div className="space-y-3 mt-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      id="use-notebook"
+                      name="processing-option"
+                      checked={useNotebook}
+                      onChange={() => {
+                        setUseNotebook(true);
+                        setUseCustomPrompt(false);
+                      }}
+                      className="w-4 h-4 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
+                    />
+                    <label htmlFor="use-notebook" className="text-sm font-medium text-gray-900">
+                      📓 Zu Notizbuch-Seite hinzufügen
+                    </label>
+                  </div>
+                  
+                  {useNotebook && (
+                    <div>
+                      <select
+                        value={selectedNotebookPage || ''}
+                        onChange={(e) => setSelectedNotebookPage(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+                      >
+                        <option value="">Notizbuch-Seite auswählen...</option>
+                        {notebookPages.map(page => (
+                          <option key={page.id} value={page.id}>{page.title}</option>
+                        ))}
+                      </select>
+                      {notebookPages.length === 0 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Keine Notizbuch-Seiten vorhanden. Bitte erstelle zuerst eine Seite im Notizbuch.
+                        </p>
+                      )}
+                      {notebookPages.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Die Transkription wird als neue Notiz hinzugefügt
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -768,6 +856,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
                   setSelectedVorlage(null);
                   setCustomPrompt('');
                   setUseCustomPrompt(false);
+                  setUseNotebook(false);
+                  setSelectedNotebookPage(null);
                 }}
                 className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
               >
@@ -775,26 +865,30 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
               </button>
               <button
                 onClick={handleProcessTranscription}
-                disabled={!useCustomPrompt && !selectedVorlage}
+                disabled={
+                  useNotebook 
+                    ? !selectedNotebookPage 
+                    : (!useCustomPrompt && !selectedVorlage)
+                }
                 className="flex-1 px-4 py-3 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Chat starten
+                {useNotebook ? 'Zum Notizbuch hinzufügen' : 'Chat starten'}
               </button>
-            </div>
           </div>
         </div>
+      </div>
       )}
 
       <Header 
         title="Audio-Transkriptionen" 
         onNavigate={handleNavigate} 
-        onLogout={handleLogout} 
+        onLogout={onLogout} 
         showBackButton 
         backTargetView={View.HOME} 
       />
 
       {/* Upload & Recording Section */}
-      <div className="p-3 sm:p-4 border-b border-gray-200 bg-white space-y-3">
+      <div className="p-3 sm:p-4 border-b border-gray-200 bg-white space-y-3 flex-shrink-0" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
         <input
           type="file"
           ref={fileInputRef}
@@ -846,7 +940,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       </div>
 
       {/* Transcriptions List */}
-      <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-3 overflow-y-auto overflow-x-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-12 h-12 border-4 border-t-transparent border-[var(--primary-color)] rounded-full animate-spin"></div>

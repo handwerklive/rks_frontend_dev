@@ -33,6 +33,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
     // FIX: Use `any` for SpeechRecognition as its types may not be available in all TypeScript environments.
@@ -147,7 +148,9 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
 
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
     };
 
     useEffect(() => {
@@ -391,7 +394,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 text-gray-800">
+        <div className="flex flex-col h-full text-gray-900 overflow-hidden">
             <Header
                 title={chatSession.title || (vorlage ? vorlage.name : 'Schneller Chat')}
                 onNavigate={onNavigate}
@@ -400,7 +403,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 backTargetView={vorlage ? View.CHAT_LIST : View.HOME}
                 backTargetData={vorlage ? { vorlageId: chatSession.vorlage_id } : undefined}
             />
-            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+            <div ref={messagesContainerRef} className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto overflow-x-hidden">
                 {chatSession.messages.map(msg => (
                     <ChatMessage key={msg.id} msg={msg} />
                 ))}
@@ -473,7 +476,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
+            <div className="flex-shrink-0 p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
                  {/* Reply Reference */}
                  {replyToMessage && (
                     <div className="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-start gap-2.5 text-sm shadow-sm">

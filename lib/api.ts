@@ -278,6 +278,63 @@ export const transcriptionsAPI = {
   delete: async (id: number) => {
     await apiClient.delete(`/api/transcriptions/${id}`);
   },
+  
+  addToNotebook: async (transcriptionId: number, pageId: number) => {
+    const response = await apiClient.post(`/api/transcriptions/${transcriptionId}/add-to-notebook`, null, {
+      params: { page_id: pageId }
+    });
+    return response.data;
+  },
+};
+
+// Notebooks API
+export const notebooksAPI = {
+  // Pages
+  getAllPages: async (limit: number = 25, offset: number = 0) => {
+    const response = await apiClient.get('/api/notebooks/pages', {
+      params: { limit, offset }
+    });
+    return response.data;
+  },
+  
+  getPageById: async (pageId: number) => {
+    const response = await apiClient.get(`/api/notebooks/pages/${pageId}`);
+    return response.data;
+  },
+  
+  createPage: async (data: { title: string; description?: string }) => {
+    const response = await apiClient.post('/api/notebooks/pages', data);
+    return response.data;
+  },
+  
+  updatePage: async (pageId: number, data: { title?: string; description?: string; ai_summary?: string }) => {
+    const response = await apiClient.patch(`/api/notebooks/pages/${pageId}`, data);
+    return response.data;
+  },
+  
+  deletePage: async (pageId: number) => {
+    await apiClient.delete(`/api/notebooks/pages/${pageId}`);
+  },
+  
+  generateSummary: async (pageId: number) => {
+    const response = await apiClient.post(`/api/notebooks/pages/${pageId}/generate-summary`);
+    return response.data;
+  },
+  
+  // Notes
+  createNote: async (data: { page_id: number; content: string; display_order?: number }) => {
+    const response = await apiClient.post('/api/notebooks/notes', data);
+    return response.data;
+  },
+  
+  updateNote: async (noteId: number, data: { content?: string; display_order?: number }) => {
+    const response = await apiClient.patch(`/api/notebooks/notes/${noteId}`, data);
+    return response.data;
+  },
+  
+  deleteNote: async (noteId: number) => {
+    await apiClient.delete(`/api/notebooks/notes/${noteId}`);
+  },
 };
 
 export default apiClient;

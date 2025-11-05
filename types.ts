@@ -10,6 +10,7 @@ export enum View {
   CHAT_HISTORY = 'chat_history',
   FILES = 'files',
   TRANSCRIPTIONS = 'transcriptions',
+  NOTEBOOKS = 'notebooks',
 }
 
 export enum UserRole {
@@ -172,4 +173,35 @@ export interface TranscriptionListItem {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   audio_duration_seconds: number | null;
   created_at: string;
+}
+
+export interface NotebookNote {
+  id: number;
+  page_id: number;
+  content: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotebookPage {
+  id: number;
+  user_id: string;
+  title: string;
+  description: string | null;
+  ai_summary: string | null;
+  ai_summary_generated_at: string | null;
+  created_at: string;
+  updated_at: string;
+  notes: NotebookNote[];
+}
+
+export interface NotebookPageListItem {
+  id: number;
+  title: string;
+  description: string | null;
+  notes_count: number;
+  has_ai_summary: boolean;
+  created_at: string;
+  updated_at: string;
 }

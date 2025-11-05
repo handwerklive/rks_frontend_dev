@@ -8,6 +8,7 @@ import UserIcon from './icons/UserIcon';
 import ChatIcon from './icons/ChatIcon';
 import StarIcon from './icons/StarIcon';
 import MicrophoneIcon from './icons/MicrophoneIcon';
+import NotebookIcon from './icons/NotebookIcon';
 
 interface HomeViewProps {
   user: User;
@@ -21,6 +22,7 @@ const HomeView: React.FC<HomeViewProps> = ({ user, vorlagen, onNavigate, onLogou
     
     const menuItems = [
         { view: View.VORLAGEN_LIST, label: 'Vorlagen', icon: <LayersIcon className="w-8 h-8"/>, description: "Alle Vorlagen durchsuchen und verwalten." },
+        { view: View.NOTEBOOKS, label: 'Intelligentes Notizbuch', icon: <NotebookIcon className="w-8 h-8"/>, description: "Notizen erstellen und intelligent zusammenfassen." },
         { view: View.TRANSCRIPTIONS, label: 'Audio-Transkriptionen', icon: <MicrophoneIcon className="w-8 h-8"/>, description: "Audio aufnehmen oder hochladen und transkribieren." },
         { view: View.CHAT_HISTORY, label: 'Chat-Verlauf', icon: <HistoryIcon className="w-8 h-8"/>, description: "Bisherige Konversationen ansehen." },
         { view: View.SETTINGS, label: 'Meine Einstellungen', icon: <SettingsIcon className="w-8 h-8"/>, description: "Persönliche KI-Anweisungen und Präferenzen." },
@@ -34,10 +36,10 @@ const HomeView: React.FC<HomeViewProps> = ({ user, vorlagen, onNavigate, onLogou
     const safeName = (user.name && user.name.trim()) ? user.name.trim() : (user.email?.split('@')[0] || 'Nutzer');
 
     return (
-        <div className="flex flex-col h-full text-gray-900 animate-fade-in-view">
+        <div className="flex flex-col h-full text-gray-900 animate-fade-in-view overflow-hidden">
             <Header title={`Willkommen, ${safeName}!`} onLogout={onLogout} />
             
-            <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-4 sm:space-y-6">
+            <div className="flex-1 p-3 sm:p-4 overflow-y-auto overflow-x-hidden space-y-4 sm:space-y-6">
                 <div>
                     <button
                         onClick={onNewQuickChat}

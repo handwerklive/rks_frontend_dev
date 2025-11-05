@@ -49,7 +49,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
     const sortedChats = [...chats].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
     return (
-    <div className="flex flex-col h-full text-gray-900">
+    <div className="flex flex-col h-full text-gray-900 overflow-hidden">
       <ConfirmationDialog
         isOpen={!!chatToDelete}
         onClose={() => setChatToDelete(null)}
@@ -66,7 +66,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
       />
             <Header title="Chat-Verlauf" onNavigate={onNavigate} onLogout={onLogout} showBackButton backTargetView={View.HOME} />
             
-            <div className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto">
+            <div className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto overflow-x-hidden">
                 {sortedChats.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
                         <ChatIcon className="w-16 h-16 mb-4 text-gray-400" />

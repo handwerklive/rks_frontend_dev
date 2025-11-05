@@ -32,18 +32,19 @@ const Header: React.FC<HeaderProps> = ({ title, onLogout, onNavigate, onBack, sh
   const shouldShowBackButton = showBackButton || !!onBack;
 
   return (
-    <header className="relative flex items-center justify-center p-2 sm:p-4 h-14 sm:h-16 bg-white border-b border-gray-200 shadow-sm flex-shrink-0 z-30">
+    <header className="relative flex items-center justify-center p-2 sm:p-4 bg-white border-b border-gray-200 shadow-sm flex-shrink-0" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))', height: 'calc(3.5rem + env(safe-area-inset-top))', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       {shouldShowBackButton && (
         <button 
           onClick={handleBackClick}
-          className="absolute top-1/2 left-2 sm:left-4 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+          className="absolute left-2 sm:left-4 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+          style={{ top: '50%', transform: 'translateY(-50%)' }}
           aria-label="Zurück"
         >
           <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       )}
       <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate px-16 max-w-full">{title}</h1>
-      <div className="absolute top-1/2 right-2 sm:right-4 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
+      <div className="absolute right-2 sm:right-4 flex items-center gap-1 sm:gap-2" style={{ top: '50%', transform: 'translateY(-50%)' }}>
         {showClearButton && onClear && (
              <button 
                 onClick={onClear}

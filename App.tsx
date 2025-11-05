@@ -14,6 +14,7 @@ import ChatHistoryView from './components/ChatHistoryView';
 import LiquidGlassBackground from './components/LiquidGlassBackground';
 import FileView from './components/FileView';
 import TranscriptionsView from './components/TranscriptionsView';
+import NotebooksView from './components/NotebooksView';
 import Toast from './components/Toast';
 import NetworkAnimation from './components/NetworkAnimation';
 
@@ -729,6 +730,8 @@ const App: React.FC = () => {
                 return <FileView files={files} onAddFile={handleAddFile} onDeleteFile={handleDeleteFile} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.TRANSCRIPTIONS:
                 return <TranscriptionsView vorlagen={vorlagen} onNavigate={handleNavigate} onLogout={handleLogout} />;
+            case View.NOTEBOOKS:
+                return <NotebooksView onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.CHAT:
                 if (!currentChatSession) {
                     // Fallback if no chat is selected, maybe something went wrong

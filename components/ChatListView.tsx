@@ -35,7 +35,7 @@ const ChatListView: React.FC<ChatListViewProps> = ({ vorlageName, chats, onSelec
     const sortedChats = [...chats].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return (
-        <div className="flex flex-col h-full text-gray-900">
+        <div className="flex flex-col h-full text-gray-900 overflow-hidden">
             <ConfirmationDialog
                 isOpen={!!chatToDelete}
                 onClose={() => setChatToDelete(null)}
