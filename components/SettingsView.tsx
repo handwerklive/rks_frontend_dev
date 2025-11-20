@@ -12,7 +12,7 @@ interface SettingsViewProps {
 
 const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings, onNavigate, onLogout }) => {
   return (
-    <div className="flex flex-col h-full text-gray-800 overflow-hidden">
+    <div className="flex flex-col h-full text-gray-800 overflow-hidden ios-view-container">
       <Header
         title="Einstellungen"
         onNavigate={onNavigate}

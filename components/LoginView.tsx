@@ -13,11 +13,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setIsLoading(true);
 
     try {
@@ -27,7 +29,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
             if (!result.success) {
                 setError(result.error || 'Registrierung fehlgeschlagen. Bitte versuche es erneut.');
             } else {
-                // Switch to login mode after successful registration
+                // Show success message and switch to login mode
+                setSuccessMessage('Registrierung erfolgreich! Dein Account muss von einem Administrator aktiviert werden, bevor du dich anmelden kannst.');
                 setIsRegisterMode(false);
                 setName('');
                 setPassword('');
@@ -103,6 +106,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
           </div>
 
           {error && <p className="text-sm text-center text-red-600 bg-red-50 border border-red-200 p-3 rounded-xl shadow-sm animate-fade-in">{error}</p>}
+          {successMessage && <p className="text-sm text-center text-green-600 bg-green-50 border border-green-200 p-3 rounded-xl shadow-sm animate-fade-in">{successMessage}</p>}
 
           <div>
             <button
@@ -127,6 +131,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
             onClick={() => {
               setIsRegisterMode(!isRegisterMode);
               setError(null);
+              setSuccessMessage(null);
               setName('');
               setPassword('');
             }}
@@ -135,17 +140,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onRegister, onNavigate }
             {isRegisterMode ? 'Bereits einen Account? Hier anmelden' : 'Noch keinen Account? Hier registrieren'}
           </button>
         </div>
-
-        {/* Demo-Daten - only show in login mode */}
-        {!isRegisterMode && <div className="mt-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 shadow-sm">
-            <p className="font-semibold mb-2">Demo-Zugangsdaten</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-              <p><span className="font-medium">E-Mail:</span> max@mustermann.max</p>
-              <p><span className="font-medium">Passwort:</span> MusterMann!</p>
-            </div>
-          </div>
-        </div>}
       </div>
     </div>
   );

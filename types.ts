@@ -11,6 +11,9 @@ export enum View {
   FILES = 'files',
   TRANSCRIPTIONS = 'transcriptions',
   NOTEBOOKS = 'notebooks',
+  DAILY_REPORT = 'daily_report',
+  DAILY_REPORT_DETAIL = 'daily_report_detail',
+  DAILY_NOTES_LIST = 'daily_notes_list',
 }
 
 export enum UserRole {
@@ -104,7 +107,7 @@ export interface Settings {
     lightrag_enabled?: boolean;
     lightrag_url?: string;
     lightrag_api_key?: string;
-    lightrag_mode?: 'local' | 'global' | 'hybrid' | 'mix';
+    lightrag_mode?: 'local' | 'global' | 'hybrid' | 'mix' | 'naive' | 'bypass';
     lightrag_top_k?: number;
     lightrag_chunk_top_k?: number;
     lightrag_max_entity_tokens?: number;
@@ -112,7 +115,7 @@ export interface Settings {
     lightrag_max_total_tokens?: number;
     lightrag_enable_rerank?: boolean;
     lightrag_include_references?: boolean;
-    lightrag_stream?: boolean;
+    lightrag_include_chunk_content?: boolean;
     
     // Branding Configuration (Admin)
     primary_color?: string;
@@ -180,6 +183,10 @@ export interface NotebookNote {
   page_id: number;
   content: string;
   display_order: number;
+  location_postal_code?: string | null;
+  location_street?: string | null;
+  location_city?: string | null;
+  location_country?: string | null;
   created_at: string;
   updated_at: string;
 }

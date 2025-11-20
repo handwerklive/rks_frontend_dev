@@ -84,10 +84,10 @@ const UserSettingsView: React.FC<UserSettingsViewProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 text-gray-800">
+    <div className="flex flex-col h-full bg-gray-50 text-gray-800 ios-view-container">
       <Header title="Meine Einstellungen" onBack={() => onNavigate(View.HOME)} />
       
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-6 overflow-y-auto ios-scrollable" style={{ paddingBottom: 'max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom)))' }}>
         <div className="max-w-3xl mx-auto space-y-6">
           
           {/* Info Box */}

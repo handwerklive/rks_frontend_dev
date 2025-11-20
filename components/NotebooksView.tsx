@@ -441,7 +441,7 @@ const NotebooksView: React.FC<NotebooksViewProps> = ({ onNavigate, onLogout }) =
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 ios-scrollable" style={{ paddingBottom: 'max(1rem, calc(1rem + env(safe-area-inset-bottom)))' }}>
                         {isLoading && pages.length === 0 ? (
                             <div className="flex items-center justify-center py-8">
                                 <div className="w-8 h-8 border-4 border-t-transparent border-[var(--primary-color)] rounded-full animate-spin"></div>

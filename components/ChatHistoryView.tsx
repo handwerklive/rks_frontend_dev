@@ -49,7 +49,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
     const sortedChats = [...chats].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
     return (
-    <div className="flex flex-col h-full text-gray-900 overflow-hidden">
+    <div className="flex flex-col h-full text-gray-900 overflow-hidden ios-view-container">
       <ConfirmationDialog
         isOpen={!!chatToDelete}
         onClose={() => setChatToDelete(null)}
@@ -66,7 +66,7 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
       />
             <Header title="Chat-Verlauf" onNavigate={onNavigate} onLogout={onLogout} showBackButton backTargetView={View.HOME} />
             
-            <div className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto overflow-x-hidden">
+            <div className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto overflow-x-hidden ios-scrollable">
                 {sortedChats.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
                         <ChatIcon className="w-16 h-16 mb-4 text-gray-400" />
@@ -79,17 +79,17 @@ const ChatHistoryView: React.FC<ChatHistoryViewProps> = ({
                         return (
                             <div
                                 key={chat.id}
-                                className="group w-full p-4 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
+                                className="group w-full p-4 sm:p-5 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-3"
                             >
                                 <button onClick={(e) => onSelectChat(chat.id, e)} className="flex-1 min-w-0" aria-label={`Gehe zu Chat: ${chat.title}`}>
-                                    <div className="flex justify-between items-center pl-2 sm:pl-4 md:pl-8">
+                                    <div className="flex justify-between items-center">
                                         <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
-                                            <h3 className="font-semibold text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors w-full text-left">{chat.title}</h3>
+                                            <h3 className="font-semibold text-base text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors w-full text-left">{chat.title}</h3>
                                             <p className={`text-sm font-medium text-left ${vorlage ? 'text-[var(--primary-color)]' : 'text-gray-500'}`}>
                                                 {vorlage ? `Vorlage: ${vorlage.name}` : 'Schnell-Chat'}
                                             </p>
                                         </div>
-                                        <span className="text-xs text-gray-500 flex-shrink-0 ml-4">{formatDate(chat.created_at)}</span>
+                                        <span className="text-sm text-gray-500 flex-shrink-0 ml-4">{formatDate(chat.created_at)}</span>
                                     </div>
                                 </button>
                                 <button

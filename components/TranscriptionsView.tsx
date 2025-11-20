@@ -39,6 +39,8 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
+  const isIOS = typeof window !== 'undefined' && /iP(hone|ad|od)/.test(window.navigator.userAgent);
+  const recordingDurationRef = useRef<number>(0);
 
   // Filter out dialog mode vorlagen
   const availableVorlagen = vorlagen.filter(v => !v.is_dialog_mode);
@@ -49,9 +51,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   }, []);
 
   useEffect(() => {
-    console.log('[TRANSCRIPTIONS] Total vorlagen:', vorlagen.length);
-    console.log('[TRANSCRIPTIONS] Available vorlagen (non-dialog):', availableVorlagen.length);
-    console.log('[TRANSCRIPTIONS] Vorlagen:', availableVorlagen.map(v => ({ id: v.id, name: v.name, is_dialog: v.is_dialog_mode })));
+    // Vorlagen filter is applied in availableVorlagen
   }, [vorlagen, availableVorlagen]);
 
   // Timer effect - updates every second when recording
@@ -62,6 +62,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current!) / 1000);
+      recordingDurationRef.current = elapsed;
       setRecordingDuration(elapsed);
     }, 100); // Update every 100ms for smooth display
 
@@ -87,20 +88,16 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       const response = await notebooksAPI.getAllPages(100, 0);
       setNotebookPages(response.items || []);
     } catch (error) {
-      console.error('[TRANSCRIPTIONS] Error loading notebook pages:', error);
+      // Silently fail - notebook pages are optional
     }
   };
 
   const loadTranscriptions = async () => {
     setIsLoading(true);
     try {
-      console.log('[TRANSCRIPTIONS] Loading transcriptions...');
       const response = await transcriptionsAPI.getAll(100, 0);
-      console.log('[TRANSCRIPTIONS] Response:', response);
       setTranscriptions(response.items || []);
-      console.log('[TRANSCRIPTIONS] Loaded transcriptions:', response.items?.length || 0);
     } catch (error: any) {
-      console.error('[TRANSCRIPTIONS] Error loading transcriptions:', error);
       showToast('Fehler beim Laden der Transkriptionen: ' + (error.response?.data?.detail || error.message), 'error');
     } finally {
       setIsLoading(false);
@@ -163,8 +160,6 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           const wav = audioBufferToWav(compressedBuffer);
           const blob = new Blob([wav], { type: 'audio/wav' });
           const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.wav'), { type: 'audio/wav' });
-
-          console.log(`[COMPRESSION] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB → Compressed: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
           
           // Check if still too large after compression
           if (compressedFile.size > 10 * 1024 * 1024) {
@@ -174,7 +169,6 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           
           resolve(compressedFile);
         } catch (error) {
-          console.error('[COMPRESSION] Error:', error);
           reject(error);
         }
       };
@@ -250,22 +244,62 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Detect supported MIME type for iOS compatibility
+      let mimeType = 'audio/webm';
+      const mimeTypes = [
+        'audio/mp4',
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus'
+      ];
+      
+      for (const type of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          console.log('[TranscriptionsView] Using MIME type:', mimeType);
+          break;
+        }
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log('[TranscriptionsView] Chunk received:', event.data.size, 'bytes');
         }
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `recording_${Date.now()}.webm`, { type: 'audio/webm' });
+        console.log('[TranscriptionsView] Recording stopped, chunks:', audioChunksRef.current.length);
+        
+        const actualMimeType = mediaRecorder.mimeType || mimeType;
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
+        
+        // Determine file extension from MIME type
+        let extension = '.webm';
+        if (actualMimeType.includes('mp4')) {
+          extension = '.m4a';
+        } else if (actualMimeType.includes('ogg')) {
+          extension = '.ogg';
+        }
+        
+        const audioFile = new File([audioBlob], `recording_${Date.now()}${extension}`, { type: actualMimeType });
+        
+        console.log('[TranscriptionsView] Created file:', audioFile.size, 'bytes, type:', audioFile.type);
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
+        
+        // Validate file is not empty
+        if (audioFile.size === 0) {
+          console.error('[TranscriptionsView] Recording is empty (0 bytes)');
+          showToast('Die Aufnahme ist leer. Bitte versuche es erneut.', 'error');
+          return;
+        }
         
         // Upload the recording
         setIsUploading(true);
@@ -303,7 +337,13 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         }
       };
 
-      mediaRecorder.start();
+      // iOS Safari/PWA does not support timeslice reliably - use continuous recording
+      // Other platforms use timeslice for better chunk management
+      if (isIOS) {
+        mediaRecorder.start();
+      } else {
+        mediaRecorder.start(1000);
+      }
       recordingStartTimeRef.current = Date.now();
       setRecordingDuration(0);
       setIsRecording(true);
@@ -331,6 +371,15 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file is not empty
+    if (file.size === 0) {
+      showToast('Die ausgewählte Datei ist leer (0 Bytes). Bitte wähle eine gültige Audio-Datei.', 'error');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     // Validate file type - check MIME type and file extension
     const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/m4a', 'audio/x-m4a', 'audio/mp4'];
     const allowedExtensions = ['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.mp4'];
@@ -355,11 +404,9 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
 
       // Compress files larger than 2MB
       if (file.size > 2 * 1024 * 1024) {
-        console.log('[UPLOAD] Compressing file...');
         try {
           fileToUpload = await compressAudio(file);
         } catch (compressionError: any) {
-          console.error('[UPLOAD] Compression failed:', compressionError);
           showToast('Fehler bei der Komprimierung: ' + compressionError.message, 'error');
           setIsUploading(false);
           if (fileInputRef.current) {
@@ -383,7 +430,6 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         setShowProcessDialog(true);
       }
     } catch (error: any) {
-      console.error('Error uploading file:', error);
       showToast('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message), 'error');
     } finally {
       setIsUploading(false);
@@ -489,9 +535,12 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
         message = `${customPrompt}\n\n---\n\n${selectedTranscription.transcription}`;
         chatTitle = 'Transkription mit eigenem Prompt';
       } else if (selectedVorlage) {
-        // Use vorlage
+        // Use vorlage - kombiniere Vorlage-Prompt mit Transkription
         vorlageId = selectedVorlage;
         const vorlage = vorlagen.find(v => v.id === selectedVorlage);
+        if (vorlage && vorlage.prompt) {
+          message = `${vorlage.prompt}\n\n---\n\n${selectedTranscription.transcription}`;
+        }
         chatTitle = `Transkription: ${vorlage?.name || 'Vorlage'}`;
       }
 
@@ -589,7 +638,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
   };
 
   return (
-    <div className="flex flex-col h-full text-gray-900 overflow-hidden">
+    <div className="flex flex-col h-full text-gray-900 overflow-hidden ios-view-container">
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-4 right-4 z-[100] animate-fade-in-view">
@@ -888,7 +937,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
       />
 
       {/* Upload & Recording Section */}
-      <div className="p-3 sm:p-4 border-b border-gray-200 bg-white space-y-3 flex-shrink-0" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+      <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-200 bg-white space-y-4 flex-shrink-0" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
         <input
           type="file"
           ref={fileInputRef}
@@ -897,50 +946,63 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           accept="audio/mpeg,audio/mp3,audio/wav,audio/webm,audio/ogg,audio/m4a,audio/x-m4a,audio/mp4,.mp3,.wav,.webm,.ogg,.m4a,.mp4"
         />
         
-        {/* Buttons Grid - Responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Upload Button */}
-          <button
-            onClick={handleUploadClick}
-            disabled={isUploading || isRecording}
-            className="group flex items-center justify-center gap-2 sm:gap-3 h-12 sm:h-14 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Audio-Datei hochladen"
-          >
-            <MicrophoneIcon className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:scale-110" />
-            <span className="text-sm sm:text-base">
-              {isUploading ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Lädt hoch...') : 'Datei hochladen'}
-            </span>
-          </button>
-
-          {/* Recording Button */}
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isUploading}
-            className={`group flex items-center justify-center gap-2 sm:gap-3 h-12 sm:h-14 font-semibold rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${
-              isRecording 
-                ? 'bg-red-500 text-white animate-pulse' 
-                : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-[var(--primary-color)]'
-            }`}
-            aria-label={isRecording ? 'Aufnahme stoppen' : 'Aufnahme starten'}
-          >
-            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-all ${
-              isRecording ? 'bg-white' : 'bg-red-500'
+        {/* Primary Action: Recording Button */}
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isUploading}
+          className={`group relative w-full flex items-center justify-center gap-3 h-14 sm:h-16 font-semibold rounded-2xl shadow-lg transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden ${
+            isRecording 
+              ? 'bg-gradient-to-br from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700' 
+              : 'bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white hover:shadow-xl hover:scale-[1.02]'
+          }`}
+          aria-label={isRecording ? 'Aufnahme stoppen' : 'Aufnahme starten'}
+        >
+          {/* Recording pulse effect - subtle background animation */}
+          {isRecording && (
+            <div className="absolute inset-0 bg-white/20 animate-ping" style={{ animationDuration: '2s' }} />
+          )}
+          
+          {/* Icon */}
+          <div className={`relative z-10 flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all ${
+            isRecording 
+              ? 'bg-white/90 shadow-lg' 
+              : 'bg-white/20'
+          }`}>
+            <div className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm transition-all ${
+              isRecording ? 'bg-red-500' : 'bg-white rounded-full'
             }`} />
-            <span className="text-sm sm:text-base">
-              {isRecording ? formatRecordingDuration(recordingDuration) : 'Aufnehmen'}
-            </span>
-          </button>
-        </div>
+          </div>
+          
+          {/* Text */}
+          <span className="relative z-10 text-base sm:text-lg font-bold">
+            {isRecording ? formatRecordingDuration(recordingDuration) : '🎙️ Aufnehmen'}
+          </span>
+        </button>
 
-        <p className="text-xs text-center text-gray-500 px-2 sm:px-4">
+        {/* Secondary Action: Upload Button */}
+        <button
+          onClick={handleUploadClick}
+          disabled={isUploading || isRecording}
+          className="group w-full flex items-center justify-center gap-2.5 h-11 sm:h-12 bg-white text-gray-700 font-medium rounded-xl border-2 border-gray-300 hover:border-[var(--primary-color)] hover:bg-gray-50 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Audio-Datei hochladen"
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 group-hover:text-[var(--primary-color)] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <span className="text-sm sm:text-base">
+            {isUploading ? (uploadProgress > 0 ? `Hochladen... ${uploadProgress}%` : 'Lädt hoch...') : 'Datei hochladen'}
+          </span>
+        </button>
+
+        <p className="text-xs text-center text-gray-500 px-2">
           {isRecording 
-            ? '🔴 Aufnahme läuft - Klicke erneut zum Stoppen' 
+            ? '🔴 Aufnahme läuft - Klicke auf den Button zum Stoppen' 
             : 'Unterstützte Formate: MP3, WAV, WebM, OGG, M4A (max. 5 MB, max. 10 Min.)'}
         </p>
       </div>
 
       {/* Transcriptions List */}
-      <div className="flex-1 p-4 space-y-3 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 p-4 space-y-3 overflow-y-auto overflow-x-hidden ios-scrollable">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-12 h-12 border-4 border-t-transparent border-[var(--primary-color)] rounded-full animate-spin"></div>
@@ -955,7 +1017,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
           transcriptions.map(item => (
             <div
               key={item.id}
-              className={`group w-full p-4 bg-white rounded-2xl border border-gray-200 transition-all duration-300 ${
+              className={`group w-full p-4 sm:p-5 bg-white rounded-2xl border border-gray-200 transition-all duration-300 ${
                 item.status === 'completed' && !isRecording ? 'hover:shadow-md hover:border-[var(--primary-color)]/50 cursor-pointer' : ''
               } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={() => item.status === 'completed' && !isRecording && handleTranscriptionClick(item)}
@@ -963,7 +1025,7 @@ const TranscriptionsView: React.FC<TranscriptionsViewProps> = ({ vorlagen, onNav
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-900 truncate">{item.audio_filename}</h3>
+                    <h3 className="font-semibold text-base text-gray-900 truncate">{item.audio_filename}</h3>
                     {item.audio_duration_seconds && (
                       <span className="text-xs text-gray-500 flex-shrink-0">
                         {formatDuration(item.audio_duration_seconds)}

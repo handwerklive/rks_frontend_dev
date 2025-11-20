@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatSession, Vorlage, View, Settings, Message } from '../types';
 import Header from './Header';
+import Breadcrumbs from './ui/Breadcrumbs';
+import LoadingSpinner from './ui/LoadingSpinner';
 import MarkdownRenderer, { parseMarkdown } from './MarkdownRenderer';
 import EnterIcon from './icons/EnterIcon';
 // import PaperclipIcon from './icons/PaperclipIcon';
@@ -18,6 +20,7 @@ interface ChatViewProps {
   onNavigate: (view: View, event?: React.MouseEvent) => void;
   onLogout: () => void;
   isLoading: boolean;
+  isStreaming: boolean;
   isLoadingTimeout: boolean;
   loadingStatus?: string;  // Current status message
   waitingForInput?: string | null;  // Dialog mode waiting indicator
@@ -26,7 +29,7 @@ interface ChatViewProps {
   autoSendMessage?: string;  // Auto-send message on mount
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isLoadingTimeout, loadingStatus, waitingForInput, settings, autoSendMessage }) => {
+const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage, onNavigate, onLogout, isLoading, isStreaming, isLoadingTimeout, loadingStatus, waitingForInput, settings, autoSendMessage }) => {
     const [message, setMessage] = useState('');
     const [attachment, setAttachment] = useState<{ mimeType: string; data: string; name: string } | null>(null);
     const [isListening, setIsListening] = useState(false);
@@ -183,7 +186,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
 
 
     const handleSend = () => {
-        if (isLoading) return;
+        if (isLoading || isStreaming) return;
         if (message.trim() || attachment) {
             // Wenn eine Nachricht referenziert wird, füge die Referenz zur Nachricht hinzu
             let messageToSend = message;
@@ -394,7 +397,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
     };
 
     return (
-        <div className="flex flex-col h-full text-gray-900 overflow-hidden">
+        <div className="flex flex-col text-gray-900 overflow-hidden ios-view-container" style={{ height: '100%', maxHeight: '100%' }}>
             <Header
                 title={chatSession.title || (vorlage ? vorlage.name : 'Schneller Chat')}
                 onNavigate={onNavigate}
@@ -403,60 +406,27 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 backTargetView={vorlage ? View.CHAT_LIST : View.HOME}
                 backTargetData={vorlage ? { vorlageId: chatSession.vorlage_id } : undefined}
             />
-            <div ref={messagesContainerRef} className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto overflow-x-hidden">
+            
+            <Breadcrumbs
+                items={[
+                    { label: 'Home', view: View.HOME },
+                    ...(vorlage ? [
+                        { label: 'Vorlagen', view: View.VORLAGEN_LIST },
+                        { label: vorlage.name, view: View.CHAT_LIST, data: { vorlageId: vorlage.id } }
+                    ] : []),
+                    { label: chatSession.title || 'Chat' }
+                ]}
+                onNavigate={onNavigate}
+            />
+            <div ref={messagesContainerRef} className="flex-1 p-4 pt-2 space-y-3 overflow-y-auto overflow-x-hidden ios-scrollable" style={{ minHeight: 0 }}>
                 {chatSession.messages.map(msg => (
                     <ChatMessage key={msg.id} msg={msg} />
                 ))}
-                {isLoading && (() => {
-                    // Get primary color from CSS variable
-                    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#59B4E2';
-                    const avatarColors = getBotAvatarColors(primaryColor);
-                    
-                    return (
-                        <div className="flex items-start gap-2 sm:gap-3 px-2 sm:px-0">
-                            <div 
-                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-md p-1"
-                                style={{ backgroundColor: 'var(--primary-color)' }}
-                            >
-                                <img 
-                                    src="/bot-avatar.svg" 
-                                    alt="Bot" 
-                                    className="w-full h-full object-contain"
-                                    style={{ 
-                                        filter: avatarColors.iconColor === 'white' 
-                                            ? 'brightness(0) invert(1)' 
-                                            : 'brightness(0)'
-                                    }}
-                                />
-                            </div>
-                            <div className="max-w-[85%] sm:max-w-[80%] md:max-w-2xl lg:max-w-3xl p-3 sm:p-4 rounded-2xl accent-bg-lighter border accent-border shadow-sm transition-all duration-500">
-                            {!isLoadingTimeout ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="relative flex-shrink-0">
-                                        <div className="w-4 h-4 border-2 accent-spinner rounded-full animate-spin"></div>
-                                    </div>
-                                    <span className="text-sm font-medium accent-text-dark">
-                                        {loadingStatus || 'Verarbeite Anfrage...'}
-                                    </span>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-2 sm:gap-3 animate-fade-in">
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative flex-shrink-0">
-                                            <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                                            <div className="absolute inset-0 w-4 h-4 sm:w-5 sm:h-5 border-2 border-amber-300 rounded-full animate-ping opacity-20"></div>
-                                        </div>
-                                        <span className="text-xs sm:text-sm font-medium text-amber-600">Dauert länger...</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500 leading-relaxed">
-                                        Bitte haben Sie noch einen Moment Geduld.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                {isLoading && (
+                    <div className="flex justify-center p-4">
+                        <LoadingSpinner size="md" text={loadingStatus || 'Verarbeite Anfrage...'} />
                     </div>
-                    );
-                })()}
+                )}
                 
                 {/* Waiting for Input Indicator (Dialog Mode ONLY) */}
                 {waitingForInput && vorlage?.is_dialog_mode && (
@@ -476,7 +446,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="flex-shrink-0 p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm">
+            <div className="flex-shrink-0 p-2 sm:p-4 bg-white border-t border-gray-200 shadow-sm" style={{ paddingBottom: 'max(1rem, calc(1rem + env(safe-area-inset-bottom)))', paddingLeft: 'max(0.5rem, env(safe-area-inset-left))', paddingRight: 'max(0.5rem, env(safe-area-inset-right))' }}>
                  {/* Reply Reference */}
                  {replyToMessage && (
                     <div className="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-start gap-2.5 text-sm shadow-sm">
@@ -513,7 +483,7 @@ const ChatView: React.FC<ChatViewProps> = ({ chatSession, vorlage, onSendMessage
                     {/* Senden-Button rechts */}
                     <button 
                         onClick={handleSend} 
-                        disabled={isLoading || (!message.trim() && !attachment)} 
+                        disabled={isLoading || isStreaming || (!message.trim() && !attachment)} 
                         className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white rounded-full shadow-md shadow-[var(--primary-color)]/20 flex items-center justify-center disabled:opacity-50 hover:shadow-lg hover:shadow-[var(--primary-color)]/30 active:scale-95 transition-all" 
                         aria-label="Senden"
                     >

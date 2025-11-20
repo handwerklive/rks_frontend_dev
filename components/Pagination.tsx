@@ -56,7 +56,7 @@ const Pagination: React.FC<PaginationProps> = ({
   const pages = getPageNumbers();
 
   return (
-    <div className="flex flex-col items-center gap-4 py-4 px-4">
+    <div className="flex flex-col items-center gap-4 py-4 px-4" style={{ paddingBottom: 'max(1rem, calc(1rem + env(safe-area-inset-bottom)))', paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
       {/* Page info */}
       {totalItems !== undefined && itemsPerPage !== undefined && (
         <div className="text-sm text-gray-600">

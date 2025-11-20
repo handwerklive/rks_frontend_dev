@@ -42,11 +42,11 @@ const SpacesListView: React.FC<SpacesListViewProps> = ({ vorlagen, onSelectVorla
           vorlagen.map(vorlage => (
             <div
               key={vorlage.id}
-              className="group w-full p-3 sm:p-4 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 active:translate-y-0 flex items-center justify-between gap-2 sm:gap-4"
+              className="group w-full p-4 sm:p-5 bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[var(--primary-color)]/50 active:translate-y-0 flex items-center justify-between gap-3"
             >
               <button onClick={(e) => onSelectVorlage(vorlage.id, e)} className="flex-1 text-left min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors">{vorlage.name}</h3>
+                    <h3 className="font-semibold text-base text-gray-900 truncate group-hover:text-[var(--primary-color)] transition-colors">{vorlage.name}</h3>
                     {vorlage.is_dialog_mode && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500 to-indigo-600 text-white whitespace-nowrap">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,29 +56,29 @@ const SpacesListView: React.FC<SpacesListViewProps> = ({ vorlagen, onSelectVorla
                       </span>
                     )}
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">{vorlage.description || 'Keine Beschreibung'}</p>
+                  <p className="text-sm text-gray-600 truncate">{vorlage.description || 'Keine Beschreibung'}</p>
               </button>
               
-              <div className="flex-shrink-0 flex items-center gap-1 sm:gap-2">
+              <div className="flex-shrink-0 flex items-center gap-2">
                  <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectVorlage(vorlage.id, e);
                     }}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-200/50 flex items-center justify-center text-gray-600 hover:bg-[var(--primary-color)]/10 hover:text-[var(--primary-color)] active:scale-95 transition-all"
+                    className="w-10 h-10 rounded-full bg-gray-200/50 flex items-center justify-center text-gray-600 hover:bg-[var(--primary-color)]/10 hover:text-[var(--primary-color)] active:scale-95 transition-all"
                     aria-label="Chat starten"
                  >
-                    <ChatIcon className="w-4 h-4 sm:w-5 sm:h-5"/>
+                    <ChatIcon className="w-5 h-5"/>
                  </button>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       onEditVorlage(vorlage, e);
                     }}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-200/50 flex items-center justify-center text-gray-600 hover:bg-[var(--primary-color)]/10 hover:text-[var(--primary-color)] active:scale-95 transition-all"
+                    className="w-10 h-10 rounded-full bg-gray-200/50 flex items-center justify-center text-gray-600 hover:bg-[var(--primary-color)]/10 hover:text-[var(--primary-color)] active:scale-95 transition-all"
                     aria-label="Vorlage bearbeiten"
                  >
-                    <EditIcon className="w-4 h-4 sm:w-5 sm:h-5"/>
+                    <EditIcon className="w-5 h-5"/>
                  </button>
               </div>
             </div>

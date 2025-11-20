@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 // Import Views
 import LoginView from './components/LoginView';
-import HomeView from './components/HomeView';
+import DashboardView from './components/DashboardView';
 import AdminView from './components/AdminView';
 import SettingsView from './components/SettingsView';
 import UserSettingsView from './components/UserSettingsView';
@@ -15,8 +15,16 @@ import LiquidGlassBackground from './components/LiquidGlassBackground';
 import FileView from './components/FileView';
 import TranscriptionsView from './components/TranscriptionsView';
 import NotebooksView from './components/NotebooksView';
+import DailyReportView from './components/DailyReportView';
+import DailyReportDetailView from './components/DailyReportDetailView';
+import DailyNotesListView from './components/DailyNotesListView';
 import Toast from './components/Toast';
 import NetworkAnimation from './components/NetworkAnimation';
+import GlobalSearch from './components/ui/GlobalSearch';
+import FloatingActionButton from './components/ui/FloatingActionButton';
+import AudioRecorder from './components/ui/AudioRecorder';
+import QuickNotePopup from './components/ui/QuickNotePopup';
+import PermissionsCheck from './components/PermissionsCheck';
 
 // Import Types
 import { View, User, Vorlage, ChatSession, Message, Settings, UserRole, UserStatus, AppFile } from './types';
@@ -26,7 +34,7 @@ import { useAuth } from './components/icons/hooks/useAuth';
 import { useSettings } from './components/icons/hooks/useSettings';
 
 // Import Backend API
-import { vorlagenAPI, chatsAPI, filesAPI, settingsAPI } from './lib/api';
+import { vorlagenAPI, chatsAPI, filesAPI, settingsAPI, usersAPI } from './lib/api';
 
 const App: React.FC = () => {
     // Hooks
@@ -40,6 +48,7 @@ const App: React.FC = () => {
     const [files, setFiles] = useState<AppFile[]>([]); // Changed from useLocalStorage to regular state
     const [currentChatId, setCurrentChatId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
     const [isLoadingTimeout, setIsLoadingTimeout] = useState(false);
     const [loadingStatus, setLoadingStatus] = useState<string>('Verarbeite Anfrage...');
     const [isFetchingUsers, setIsFetchingUsers] = useState(false);
@@ -52,7 +61,24 @@ const App: React.FC = () => {
         const isLoggedIn = localStorage.getItem('access_token');
         return !isLoggedIn;
     });
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false);
+    const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
+    const [showPermissionsCheck, setShowPermissionsCheck] = useState(false);
+    const [isProcessingQuickAudio, setIsProcessingQuickAudio] = useState(false);
     
+    // Global Search Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsSearchOpen(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     // Pagination state
     const [chatPage, setChatPage] = useState(1);
     const [chatTotalPages, setChatTotalPages] = useState(1);
@@ -67,6 +93,11 @@ const App: React.FC = () => {
     useEffect(() => {
         if (user) {
             setView(View.HOME);
+            // Show permissions check on first login
+            const hasSeenPermissions = localStorage.getItem('permissions_checked');
+            if (!hasSeenPermissions) {
+                setShowPermissionsCheck(true);
+            }
         } else {
             setView(View.LOGIN);
             setCurrentChatId(null);
@@ -111,8 +142,20 @@ const App: React.FC = () => {
         
         // Refresh data when navigating to specific views
         if (targetView === View.ADMIN && user?.role === UserRole.ADMIN) {
-            // Load global settings from backend
+            setIsFetchingUsers(true);
             try {
+                // Load all users from backend
+                const allUsers = await usersAPI.getAll();
+                const mappedUsers = allUsers.map((u: any) => ({
+                    id: u.user_id,
+                    name: u.name,
+                    email: u.email,
+                    role: u.role === 'admin' ? UserRole.ADMIN : UserRole.USER,
+                    status: u.status === 'active' ? UserStatus.ACTIVE : UserStatus.PENDING,
+                }));
+                replaceAllUsers(mappedUsers);
+                
+                // Load global settings from backend
                 const globalSettings = await settingsAPI.getGlobal();
                 updateSettings({
                     globalSystemPrompt: globalSettings.global_system_prompt,
@@ -131,7 +174,7 @@ const App: React.FC = () => {
                     lightrag_max_total_tokens: globalSettings.lightrag_max_total_tokens,
                     lightrag_enable_rerank: globalSettings.lightrag_enable_rerank,
                     lightrag_include_references: globalSettings.lightrag_include_references,
-                    lightrag_stream: globalSettings.lightrag_stream,
+                    lightrag_include_chunk_content: globalSettings.lightrag_include_chunk_content,
                     primary_color: globalSettings.primary_color,
                     secondary_color: globalSettings.secondary_color,
                     logo_url: globalSettings.logo_url,
@@ -141,8 +184,11 @@ const App: React.FC = () => {
                 // Note: Branding (colors, title) are already applied on app start
                 // and updated immediately when saved in AdminView, so we don't need to reapply them here
             } catch (error: any) {
-                console.error('Error loading global settings:', error);
-                // Continue to admin view even if settings fail to load
+                console.error('Error loading admin data:', error);
+                showToast('Fehler beim Laden der Admin-Daten: ' + (error.response?.data?.detail || error.message));
+                // Continue to admin view even if data fails to load
+            } finally {
+                setIsFetchingUsers(false);
             }
             setView(targetView);
             setViewData(data);
@@ -420,6 +466,7 @@ const App: React.FC = () => {
         };
         
         setIsLoading(true);
+        setIsStreaming(false);
         setIsLoadingTimeout(false);
         setLoadingStatus('Verarbeite Anfrage...');
         setWaitingForInput(null); // Clear waiting indicator when user sends message
@@ -496,8 +543,9 @@ const App: React.FC = () => {
                                 switch (data.type) {
                                     case 'status':
                                         if (data.message === '') {
-                                            // Empty status means stream has started, remove loading
+                                            // Empty status means stream has started, remove loading but set streaming
                                             setIsLoading(false);
+                                            setIsStreaming(true);
                                             setLoadingStatus('');
                                         } else {
                                             setLoadingStatus(data.message);
@@ -516,8 +564,9 @@ const App: React.FC = () => {
                                         streamedContent += data.content;
                                         
                                         if (isFirstChunk) {
-                                            // Remove loading state immediately when first content arrives
+                                            // Remove loading state immediately when first content arrives, but set streaming
                                             setIsLoading(false);
+                                            setIsStreaming(true);
                                             setLoadingStatus('');
                                             
                                             // Add initial AI message
@@ -565,6 +614,7 @@ const App: React.FC = () => {
                                             } : cs
                                         ));
                                         setIsLoading(false);
+                                        setIsStreaming(false);
                                         break;
                                     
                                     case 'title':
@@ -633,8 +683,9 @@ const App: React.FC = () => {
             setChatSessions(prev => prev.map(cs => 
                 cs.id === chatId ? { ...cs, messages: [...cs.messages, errorMessage] } : cs
             ));
-            // Only reset loading state on error
+            // Reset both loading and streaming state on error
             setIsLoading(false);
+            setIsStreaming(false);
             setLoadingStatus('Verarbeite Anfrage...');
         } finally {
             clearTimeout(timeoutTimer);
@@ -675,6 +726,73 @@ const App: React.FC = () => {
         return null;
     }, [view, viewData, vorlagen]);
 
+    // Handler for Quick Audio Note
+    const handleQuickAudioNote = async (audioBlob: Blob, duration: number) => {
+        try {
+            setIsProcessingQuickAudio(true);
+            
+            // Validate blob is not empty
+            if (!audioBlob || audioBlob.size === 0) {
+                console.error('[App] Audio blob is empty:', audioBlob);
+                showToast('Die Aufnahme ist leer. Bitte versuche es erneut.', 'error');
+                return;
+            }
+            
+            console.log('[App] Processing audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+            
+            // Convert Blob to File - use actual blob type (mp4 on iOS, webm on others)
+            const extension = audioBlob.type.includes('mp4') ? '.m4a' : '.webm';
+            const audioFile = new File([audioBlob], `quick_note_${Date.now()}${extension}`, { type: audioBlob.type });
+            
+            // Double-check file size
+            if (audioFile.size === 0) {
+                console.error('[App] Audio file is empty after conversion');
+                showToast('Die Aufnahme konnte nicht verarbeitet werden. Bitte versuche es erneut.', 'error');
+                return;
+            }
+            
+            console.log('[App] Uploading audio file:', audioFile.name, audioFile.size, 'bytes');
+            
+            // Upload and transcribe
+            const { transcriptionsAPI, notebooksAPI } = await import('./lib/api');
+            const response = await transcriptionsAPI.upload(audioFile, 'de', (progress) => {
+                console.log('Upload progress:', progress);
+            });
+            
+            // Check if transcription was successful
+            if (response.status === 'completed' && response.transcription) {
+                // Get location (non-blocking)
+                let locationData = {};
+                try {
+                    const { getLocationWithAddress } = await import('./lib/geolocation');
+                    const location = await getLocationWithAddress();
+                    locationData = {
+                        location_postal_code: location.postal_code,
+                        location_street: location.street,
+                        location_city: location.city,
+                        location_country: location.country
+                    };
+                } catch (locationError) {
+                    console.log('Could not get location, continuing without it:', locationError);
+                }
+                
+                // Save to daily notes
+                await notebooksAPI.quickAddNote({
+                    content: response.transcription,
+                    ...locationData
+                });
+                
+                showToast('Audionotiz erfolgreich gespeichert!', 'success');
+            } else {
+                showToast('Transkription fehlgeschlagen', 'error');
+            }
+        } catch (error: any) {
+            console.error('Error processing quick audio note:', error);
+            showToast('Fehler beim Verarbeiten der Audionotiz: ' + (error.response?.data?.detail || error.message), 'error');
+        } finally {
+            setIsProcessingQuickAudio(false);
+        }
+    };
 
     // View Renderer
     const renderView = () => {
@@ -684,7 +802,7 @@ const App: React.FC = () => {
 
         switch (view) {
             case View.HOME:
-                return <HomeView user={user} vorlagen={vorlagen} onNavigate={handleNavigate} onLogout={handleLogout} onNewQuickChat={handleNewQuickChat} />;
+                return <DashboardView user={user} vorlagen={vorlagen} chats={chatSessions} onNavigate={handleNavigate} onLogout={handleLogout} onNewQuickChat={handleNewQuickChat} onStartAudioRecording={() => setIsAudioRecorderOpen(true)} onOpenQuickNote={() => setIsQuickNoteOpen(true)} onQuickAudioNote={handleQuickAudioNote} />;
             case View.ADMIN:
                 return <AdminView users={users} onUpdateUser={updateUser} onDeleteUser={deleteUser} onNavigate={handleNavigate} onLogout={handleLogout} settings={settings} onUpdateSettings={updateSettings} />;
             case View.SETTINGS:
@@ -732,6 +850,12 @@ const App: React.FC = () => {
                 return <TranscriptionsView vorlagen={vorlagen} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.NOTEBOOKS:
                 return <NotebooksView onNavigate={handleNavigate} onLogout={handleLogout} />;
+            case View.DAILY_REPORT:
+                return <DailyReportView onNavigate={handleNavigate} onLogout={handleLogout} />;
+            case View.DAILY_REPORT_DETAIL:
+                return <DailyReportDetailView onNavigate={handleNavigate} onLogout={handleLogout} pageId={viewData?.pageId} />;
+            case View.DAILY_NOTES_LIST:
+                return <DailyNotesListView onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.CHAT:
                 if (!currentChatSession) {
                     // Fallback if no chat is selected, maybe something went wrong
@@ -744,7 +868,8 @@ const App: React.FC = () => {
                     onSendMessage={handleSendMessage} 
                     onNavigate={handleNavigate} 
                     onLogout={handleLogout} 
-                    isLoading={isLoading} 
+                    isLoading={isLoading}
+                    isStreaming={isStreaming}
                     isLoadingTimeout={isLoadingTimeout} 
                     loadingStatus={loadingStatus} 
                     waitingForInput={waitingForInput} 
@@ -789,6 +914,120 @@ const App: React.FC = () => {
                     />
                 )}
             </div>
+            
+            {/* Global Search */}
+            <GlobalSearch
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onNavigate={handleNavigate}
+                chats={chatSessions}
+                vorlagen={vorlagen}
+            />
+            
+            {/* Floating Action Button (Mobile only) - ausgeblendet in Chat-Ansicht */}
+            {user && view !== View.CHAT && (
+                <div className="sm:hidden">
+                    <FloatingActionButton
+                        onNavigate={handleNavigate}
+                        onNewQuickChat={handleNewQuickChat}
+                        onStartAudioRecording={() => setIsAudioRecorderOpen(true)}
+                        onOpenQuickNote={() => setIsQuickNoteOpen(true)}
+                        currentView={view}
+                    />
+                </div>
+            )}
+            
+            {/* Audio Recorder */}
+            <AudioRecorder
+                isOpen={isAudioRecorderOpen}
+                onClose={() => setIsAudioRecorderOpen(false)}
+                onSave={async (audioBlob, duration) => {
+                    try {
+                        setIsLoading(true);
+                        
+                        // Validate blob is not empty
+                        if (!audioBlob || audioBlob.size === 0) {
+                            console.error('[App] Audio blob is empty:', audioBlob);
+                            showToast('Die Aufnahme ist leer. Bitte versuche es erneut.', 'error');
+                            setIsLoading(false);
+                            return;
+                        }
+                        
+                        console.log('[App] Processing audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+                        
+                        // Convert Blob to File - use actual blob type (mp4 on iOS, webm on others)
+                        const extension = audioBlob.type.includes('mp4') ? '.m4a' : '.webm';
+                        const audioFile = new File([audioBlob], `recording_${Date.now()}${extension}`, { type: audioBlob.type });
+                        
+                        // Double-check file size
+                        if (audioFile.size === 0) {
+                            console.error('[App] Audio file is empty after conversion');
+                            showToast('Die Aufnahme konnte nicht verarbeitet werden.', 'error');
+                            setIsLoading(false);
+                            return;
+                        }
+                        
+                        console.log('[App] Uploading audio file:', audioFile.name, audioFile.size, 'bytes');
+                        
+                        // Upload to transcriptions
+                        const { transcriptionsAPI } = await import('./lib/api');
+                        await transcriptionsAPI.upload(audioFile, 'de', (progress) => {
+                            console.log('Upload progress:', progress);
+                        });
+                        
+                        showToast('Audio hochgeladen und wird transkribiert!', 'success');
+                        
+                        // Navigate to transcriptions view
+                        setView(View.TRANSCRIPTIONS);
+                    } catch (error: any) {
+                        console.error('Error uploading audio:', error);
+                        showToast('Fehler beim Hochladen: ' + (error.response?.data?.detail || error.message), 'error');
+                    } finally {
+                        setIsLoading(false);
+                    }
+                }}
+            />
+            
+            {/* Quick Note Popup */}
+            <QuickNotePopup
+                isOpen={isQuickNoteOpen}
+                onClose={() => setIsQuickNoteOpen(false)}
+                onSave={async (note) => {
+                    try {
+                        const { notebooksAPI } = await import('./lib/api');
+                        await notebooksAPI.quickAddNote({ content: note });
+                        showToast('Notiz gespeichert', 'success');
+                    } catch (error) {
+                        console.error('Error saving note:', error);
+                        showToast('Fehler beim Speichern', 'error');
+                    }
+                }}
+            />
+            
+            {/* Permissions Check */}
+            {showPermissionsCheck && (
+                <PermissionsCheck
+                    onPermissionsGranted={() => {
+                        setShowPermissionsCheck(false);
+                        localStorage.setItem('permissions_checked', 'true');
+                    }}
+                />
+            )}
+            
+            {/* Processing Quick Audio Overlay */}
+            {isProcessingQuickAudio && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in-view">
+                    <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+                        <div className="text-center">
+                            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] flex items-center justify-center">
+                                <div className="w-16 h-16 border-4 border-t-transparent border-white rounded-full animate-spin"></div>
+                            </div>
+                            <p className="text-white text-lg font-medium mb-2">🎤 Verarbeite Audionotiz</p>
+                            <p className="text-white/70 text-sm">Die Aufnahme wird transkribiert und gespeichert...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 };

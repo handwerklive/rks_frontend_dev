@@ -153,6 +153,16 @@ export const chatsAPI = {
   delete: async (chatId: number) => {
     await apiClient.delete(`/api/chats/${chatId}`);
   },
+  
+  sendBenchmarkMessage: async (message: string) => {
+    const response = await apiClient.post('/api/chats/benchmark', {
+      message,
+      stream: false
+    }, {
+      timeout: 300000, // 5 minutes for benchmark requests (parallel requests can take longer)
+    });
+    return response.data;
+  },
 };
 
 // Files API
@@ -322,18 +332,51 @@ export const notebooksAPI = {
   },
   
   // Notes
-  createNote: async (data: { page_id: number; content: string; display_order?: number }) => {
+  createNote: async (data: { 
+    page_id: number; 
+    content: string; 
+    display_order?: number;
+    location_postal_code?: string | null;
+    location_street?: string | null;
+    location_city?: string | null;
+    location_country?: string | null;
+  }) => {
     const response = await apiClient.post('/api/notebooks/notes', data);
     return response.data;
   },
   
-  updateNote: async (noteId: number, data: { content?: string; display_order?: number }) => {
+  updateNote: async (noteId: number, data: { 
+    content?: string; 
+    display_order?: number;
+    location_postal_code?: string | null;
+    location_street?: string | null;
+    location_city?: string | null;
+    location_country?: string | null;
+  }) => {
     const response = await apiClient.patch(`/api/notebooks/notes/${noteId}`, data);
     return response.data;
   },
   
   deleteNote: async (noteId: number) => {
     await apiClient.delete(`/api/notebooks/notes/${noteId}`);
+  },
+
+  // Quick Add - Simplified workflow
+  quickAddNote: async (data: {
+    content: string;
+    location_postal_code?: string | null;
+    location_street?: string | null;
+    location_city?: string | null;
+    location_country?: string | null;
+  }) => {
+    const response = await apiClient.post('/api/notebooks/quick-add', data);
+    return response.data;
+  },
+
+  // Get today's page
+  getTodayPage: async () => {
+    const response = await apiClient.get('/api/notebooks/today');
+    return response.data;
   },
 };
 

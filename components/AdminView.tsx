@@ -5,6 +5,7 @@ import CheckIcon from './icons/CheckIcon';
 import UserIcon from './icons/UserIcon';
 import WrenchIcon from './icons/WrenchIcon';
 import { settingsAPI, logsAPI } from '../lib/api';
+import BenchmarkLiveMonitor from './BenchmarkLiveMonitor';
 
 
 interface AdminViewProps {
@@ -18,8 +19,29 @@ interface AdminViewProps {
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser, onNavigate, onLogout, settings, onUpdateSettings }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'branding' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'branding' | 'logs' | 'benchmark'>('users');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Benchmark State
+  const [benchmarkQuery, setBenchmarkQuery] = useState('');
+  const [benchmarkIterations, setBenchmarkIterations] = useState(10);
+  const [benchmarkRunning, setBenchmarkRunning] = useState(false);
+  const [benchmarkResults, setBenchmarkResults] = useState<any>(null);
+  const [benchmarkMode, setBenchmarkMode] = useState<'single' | 'multi'>('single');
+  const [simulatedUsers, setSimulatedUsers] = useState(5);
+  const [benchmarkProgress, setBenchmarkProgress] = useState<string>('');
+  const [executionMode, setExecutionMode] = useState<'sequential' | 'parallel'>('sequential');
+  const [benchmarkAbortController, setBenchmarkAbortController] = useState<AbortController | null>(null);
+  
+  // Live Monitoring State
+  const [liveMetrics, setLiveMetrics] = useState<Array<{
+    index: number;
+    success: boolean;
+    time: number;
+    timestamp: number;
+    metrics?: any;
+    error?: string;
+  }>>([]);
   
   // Global Settings State
   const [globalSystemPrompt, setGlobalSystemPrompt] = useState('');
@@ -42,7 +64,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const [lightragMaxTotalTokens, setLightragMaxTotalTokens] = useState(8000);
   const [lightragEnableRerank, setLightragEnableRerank] = useState(false);
   const [lightragIncludeReferences, setLightragIncludeReferences] = useState(false);
-  const [lightragStream, setLightragStream] = useState(false);
+  const [lightragIncludeChunkContent, setLightragIncludeChunkContent] = useState(false);
   
   // Branding Settings
   const [primaryColor, setPrimaryColor] = useState('#59B4E2');
@@ -84,7 +106,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     setLightragMaxTotalTokens(settings.lightrag_max_total_tokens || 8000);
     setLightragEnableRerank(settings.lightrag_enable_rerank || false);
     setLightragIncludeReferences(settings.lightrag_include_references || false);
-    setLightragStream(settings.lightrag_stream || false);
+    setLightragIncludeChunkContent(settings.lightrag_include_chunk_content || false);
     setPrimaryColor(settings.primary_color || '#59B4E2');
     setSecondaryColor(settings.secondary_color || '#62B04A');
     setLogoUrl(settings.logo_url || 'https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png');
@@ -136,7 +158,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         lightrag_max_total_tokens: lightragMaxTotalTokens,
         lightrag_enable_rerank: lightragEnableRerank,
         lightrag_include_references: lightragIncludeReferences,
-        lightrag_stream: lightragStream,
+        lightrag_include_chunk_content: lightragIncludeChunkContent
       });
       // Also update local state
       onUpdateSettings({ 
@@ -151,7 +173,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         lightrag_max_total_tokens: lightragMaxTotalTokens,
         lightrag_enable_rerank: lightragEnableRerank,
         lightrag_include_references: lightragIncludeReferences,
-        lightrag_stream: lightragStream,
+        lightrag_include_chunk_content: lightragIncludeChunkContent
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -297,6 +319,380 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     }
   };
   
+  const handleCancelBenchmark = () => {
+    if (benchmarkAbortController) {
+      benchmarkAbortController.abort();
+      setBenchmarkProgress('❌ Benchmark abgebrochen');
+      setBenchmarkRunning(false);
+      setBenchmarkAbortController(null);
+    }
+  };
+
+  const handleRunBenchmark = async () => {
+    if (benchmarkMode === 'single' && !benchmarkQuery.trim()) return;
+    if (benchmarkRunning) return;
+    
+    // Create new AbortController
+    const abortController = new AbortController();
+    setBenchmarkAbortController(abortController);
+    
+    setBenchmarkRunning(true);
+    setBenchmarkResults(null);
+    setBenchmarkProgress('');
+    setLiveMetrics([]);
+    
+    const times: number[] = [];
+    const errors: string[] = [];
+    let successCount = 0;
+    const startTime = Date.now();
+    let wasCancelled = false;
+    
+    // Detailed metrics collection
+    const detailedMetrics = {
+      lightrag_times: [] as number[],
+      ai_times: [] as number[],
+      first_token_times: [] as number[],
+      settings_load_times: [] as number[],
+      total_times: [] as number[],
+      response_lengths: [] as number[],
+      tokens_estimates: [] as number[],
+      tokens_per_second: [] as number[],
+      lightrag_context_lengths: [] as number[]
+    };
+    
+    try {
+      // Import chatsAPI
+      const { chatsAPI } = await import('../lib/api');
+      
+      if (benchmarkMode === 'multi') {
+        // Multi-User Simulation: KI generiert Fragen
+        setBenchmarkProgress('🤖 Generiere Fragen für Benutzer-Simulation...');
+        
+        let generatedQuestions: string[] = [];
+        try {
+          const response = await chatsAPI.sendBenchmarkMessage(
+            `Generiere ${simulatedUsers} verschiedene, realistische Benutzer-Anfragen für einen Chatbot. 
+            Die Anfragen sollten vielfältig sein (Fragen, Aufgaben, Informationssuche, etc.).
+            Antworte NUR mit einer nummerierten Liste der Anfragen, ohne zusätzlichen Text.
+            Beispiel:
+            1. Wie ist das Wetter heute?
+            2. Erkläre mir Quantenphysik
+            3. Schreibe eine E-Mail an meinen Chef`
+          );
+          
+          // Parse die generierten Fragen
+          const lines = response.response.split('\n').filter((line: string) => line.trim());
+          generatedQuestions = lines
+            .map((line: string) => line.replace(/^\d+\.\s*/, '').trim())
+            .filter((q: string) => q.length > 0)
+            .slice(0, simulatedUsers);
+          
+          if (generatedQuestions.length === 0) {
+            throw new Error('Keine Fragen generiert');
+          }
+          
+          setBenchmarkProgress(`✅ ${generatedQuestions.length} Fragen generiert. Starte Simulation...`);
+        } catch (error: any) {
+          errors.push('Fragen-Generierung fehlgeschlagen: ' + error.message);
+          setBenchmarkProgress('❌ Fragen-Generierung fehlgeschlagen');
+          throw error;
+        }
+        
+        // Sende alle generierten Fragen
+        if (executionMode === 'parallel') {
+          // Parallel: Alle gleichzeitig
+          setBenchmarkProgress(`🚀 Sende ${generatedQuestions.length} Anfragen parallel...`);
+          
+          const promises = generatedQuestions.map(async (question, i) => {
+            const iterationStart = Date.now();
+            try {
+              const response = await chatsAPI.sendBenchmarkMessage(question);
+              const iterationTime = (Date.now() - iterationStart) / 1000;
+              const result = { success: true, time: iterationTime, index: i, metrics: response.metrics, timestamp: Date.now() };
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, result]);
+              
+              return result;
+            } catch (error: any) {
+              const result = { success: false, error: error.message || 'Unbekannter Fehler', index: i, time: 0, timestamp: Date.now() };
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, result]);
+              
+              return result;
+            }
+          });
+          
+          const results = await Promise.all(promises);
+          
+          results.forEach(result => {
+            if (result.success) {
+              times.push(result.time);
+              successCount++;
+              // Collect detailed metrics
+              if (result.metrics) {
+                detailedMetrics.lightrag_times.push(result.metrics.lightrag_query_ms || 0);
+                detailedMetrics.ai_times.push(result.metrics.ai_response_ms || 0);
+                detailedMetrics.first_token_times.push(result.metrics.first_token_ms || 0);
+                detailedMetrics.settings_load_times.push(result.metrics.settings_load_ms || 0);
+                detailedMetrics.total_times.push(result.metrics.total_time_ms || 0);
+                detailedMetrics.response_lengths.push(result.metrics.response_length || 0);
+                detailedMetrics.tokens_estimates.push(result.metrics.tokens_estimate || 0);
+                detailedMetrics.tokens_per_second.push(result.metrics.tokens_per_second || 0);
+                detailedMetrics.lightrag_context_lengths.push(result.metrics.lightrag_context_length || 0);
+              }
+            } else {
+              errors.push(`Benutzer ${result.index + 1}: ${result.error}`);
+            }
+          });
+        } else {
+          // Sequential: Nacheinander
+          for (let i = 0; i < generatedQuestions.length; i++) {
+            // Check if cancelled
+            if (abortController.signal.aborted) {
+              wasCancelled = true;
+              break;
+            }
+            
+            setBenchmarkProgress(`📤 Benutzer ${i + 1}/${generatedQuestions.length}: "${generatedQuestions[i].substring(0, 50)}..."`);
+            const iterationStart = Date.now();
+            
+            try {
+              const response = await chatsAPI.sendBenchmarkMessage(generatedQuestions[i]);
+              
+              const iterationTime = (Date.now() - iterationStart) / 1000;
+              times.push(iterationTime);
+              successCount++;
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, {
+                index: i,
+                success: true,
+                time: iterationTime,
+                timestamp: Date.now(),
+                metrics: response.metrics
+              }]);
+              
+              // Collect detailed metrics
+              if (response.metrics) {
+                detailedMetrics.lightrag_times.push(response.metrics.lightrag_query_ms || 0);
+                detailedMetrics.ai_times.push(response.metrics.ai_response_ms || 0);
+                detailedMetrics.first_token_times.push(response.metrics.first_token_ms || 0);
+                detailedMetrics.settings_load_times.push(response.metrics.settings_load_ms || 0);
+                detailedMetrics.total_times.push(response.metrics.total_time_ms || 0);
+                detailedMetrics.response_lengths.push(response.metrics.response_length || 0);
+                detailedMetrics.tokens_estimates.push(response.metrics.tokens_estimate || 0);
+                detailedMetrics.tokens_per_second.push(response.metrics.tokens_per_second || 0);
+                detailedMetrics.lightrag_context_lengths.push(response.metrics.lightrag_context_length || 0);
+              }
+            } catch (error: any) {
+              errors.push(`Benutzer ${i + 1}: ${error.message || 'Unbekannter Fehler'}`);
+              console.error(`Benchmark user ${i + 1} failed:`, error);
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, {
+                index: i,
+                success: false,
+                time: 0,
+                timestamp: Date.now(),
+                error: error.message || 'Unbekannter Fehler'
+              }]);
+            }
+          }
+        }
+      } else {
+        // Single Query Mode: Gleiche Frage mehrmals
+        if (executionMode === 'parallel') {
+          // Parallel: Alle gleichzeitig
+          setBenchmarkProgress(`🚀 Sende ${benchmarkIterations} Anfragen parallel...`);
+          
+          const promises = Array.from({ length: benchmarkIterations }, async (_, i) => {
+            const iterationStart = Date.now();
+            try {
+              const response = await chatsAPI.sendBenchmarkMessage(benchmarkQuery);
+              const iterationTime = (Date.now() - iterationStart) / 1000;
+              const result = { success: true, time: iterationTime, index: i, metrics: response.metrics, timestamp: Date.now() };
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, result]);
+              
+              return result;
+            } catch (error: any) {
+              const result = { success: false, error: error.message || 'Unbekannter Fehler', index: i, time: 0, timestamp: Date.now() };
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, result]);
+              
+              return result;
+            }
+          });
+          
+          const results = await Promise.all(promises);
+          
+          results.forEach(result => {
+            if (result.success) {
+              times.push(result.time);
+              successCount++;
+              // Collect detailed metrics
+              if (result.metrics) {
+                detailedMetrics.lightrag_times.push(result.metrics.lightrag_query_ms || 0);
+                detailedMetrics.ai_times.push(result.metrics.ai_response_ms || 0);
+                detailedMetrics.first_token_times.push(result.metrics.first_token_ms || 0);
+                detailedMetrics.settings_load_times.push(result.metrics.settings_load_ms || 0);
+                detailedMetrics.total_times.push(result.metrics.total_time_ms || 0);
+                detailedMetrics.response_lengths.push(result.metrics.response_length || 0);
+                detailedMetrics.tokens_estimates.push(result.metrics.tokens_estimate || 0);
+                detailedMetrics.tokens_per_second.push(result.metrics.tokens_per_second || 0);
+                detailedMetrics.lightrag_context_lengths.push(result.metrics.lightrag_context_length || 0);
+              }
+            } else {
+              errors.push(`Iteration ${result.index + 1}: ${result.error}`);
+            }
+          });
+        } else {
+          // Sequential: Nacheinander
+          for (let i = 0; i < benchmarkIterations; i++) {
+            // Check if cancelled
+            if (abortController.signal.aborted) {
+              wasCancelled = true;
+              break;
+            }
+            
+            setBenchmarkProgress(`📤 Anfrage ${i + 1}/${benchmarkIterations}...`);
+            const iterationStart = Date.now();
+            
+            try {
+              const response = await chatsAPI.sendBenchmarkMessage(benchmarkQuery);
+              
+              const iterationTime = (Date.now() - iterationStart) / 1000;
+              times.push(iterationTime);
+              successCount++;
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, {
+                index: i,
+                success: true,
+                time: iterationTime,
+                timestamp: Date.now(),
+                metrics: response.metrics
+              }]);
+              
+              // Collect detailed metrics
+              if (response.metrics) {
+                detailedMetrics.lightrag_times.push(response.metrics.lightrag_query_ms || 0);
+                detailedMetrics.ai_times.push(response.metrics.ai_response_ms || 0);
+                detailedMetrics.first_token_times.push(response.metrics.first_token_ms || 0);
+                detailedMetrics.settings_load_times.push(response.metrics.settings_load_ms || 0);
+                detailedMetrics.total_times.push(response.metrics.total_time_ms || 0);
+                detailedMetrics.response_lengths.push(response.metrics.response_length || 0);
+                detailedMetrics.tokens_estimates.push(response.metrics.tokens_estimate || 0);
+                detailedMetrics.tokens_per_second.push(response.metrics.tokens_per_second || 0);
+                detailedMetrics.lightrag_context_lengths.push(response.metrics.lightrag_context_length || 0);
+              }
+            } catch (error: any) {
+              errors.push(`Iteration ${i + 1}: ${error.message || 'Unbekannter Fehler'}`);
+              console.error(`Benchmark iteration ${i + 1} failed:`, error);
+              
+              // Live update
+              setLiveMetrics(prev => [...prev, {
+                index: i,
+                success: false,
+                time: 0,
+                timestamp: Date.now(),
+                error: error.message || 'Unbekannter Fehler'
+              }]);
+            }
+          }
+        }
+      }
+      
+      // Check if cancelled before showing results
+      if (wasCancelled) {
+        setBenchmarkProgress('❌ Benchmark abgebrochen');
+        return;
+      }
+      
+      const totalTime = (Date.now() - startTime) / 1000;
+      const avgTime = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
+      const minTime = times.length > 0 ? Math.min(...times) : 0;
+      const maxTime = times.length > 0 ? Math.max(...times) : 0;
+      const requestsPerSecond = successCount / totalTime;
+      
+      const config = `${aiProvider.toUpperCase()} ${aiProvider === 'openai' ? openaiModel : anthropicModel}${lightragEnabled ? ' + LightRAG' : ''}${anthropicWebSearchEnabled ? ' + Web Search' : ''}`;
+      
+      // Calculate aggregated detailed metrics
+      const calcAvg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const calcMin = (arr: number[]) => arr.length > 0 ? Math.min(...arr) : 0;
+      const calcMax = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : 0;
+      
+      const aggregatedMetrics = {
+        lightrag: {
+          avg: calcAvg(detailedMetrics.lightrag_times),
+          min: calcMin(detailedMetrics.lightrag_times),
+          max: calcMax(detailedMetrics.lightrag_times)
+        },
+        ai_response: {
+          avg: calcAvg(detailedMetrics.ai_times),
+          min: calcMin(detailedMetrics.ai_times),
+          max: calcMax(detailedMetrics.ai_times)
+        },
+        first_token: {
+          avg: calcAvg(detailedMetrics.first_token_times.filter(t => t > 0)),
+          min: calcMin(detailedMetrics.first_token_times.filter(t => t > 0)),
+          max: calcMax(detailedMetrics.first_token_times.filter(t => t > 0))
+        },
+        settings_load: {
+          avg: calcAvg(detailedMetrics.settings_load_times),
+          min: calcMin(detailedMetrics.settings_load_times),
+          max: calcMax(detailedMetrics.settings_load_times)
+        },
+        response_length: {
+          avg: calcAvg(detailedMetrics.response_lengths),
+          min: calcMin(detailedMetrics.response_lengths),
+          max: calcMax(detailedMetrics.response_lengths),
+          total: detailedMetrics.response_lengths.reduce((a, b) => a + b, 0)
+        },
+        tokens: {
+          avg: calcAvg(detailedMetrics.tokens_estimates),
+          total: detailedMetrics.tokens_estimates.reduce((a, b) => a + b, 0),
+          per_second_avg: calcAvg(detailedMetrics.tokens_per_second)
+        },
+        lightrag_context: {
+          avg: calcAvg(detailedMetrics.lightrag_context_lengths),
+          max: calcMax(detailedMetrics.lightrag_context_lengths)
+        }
+      };
+      
+      setBenchmarkProgress('✅ Benchmark abgeschlossen!');
+      
+      setBenchmarkResults({
+        totalTime,
+        avgTime,
+        minTime,
+        maxTime,
+        successCount,
+        errorCount: errors.length,
+        totalRequests: benchmarkMode === 'multi' ? simulatedUsers : benchmarkIterations,
+        requestsPerSecond,
+        config,
+        mode: benchmarkMode === 'multi' ? `Multi-User (${simulatedUsers} Benutzer)` : 'Single Query',
+        executionMode: executionMode === 'parallel' ? 'Parallel ⚡' : 'Nacheinander ⏭️',
+        detailedMetrics: aggregatedMetrics,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error: any) {
+      console.error('Benchmark failed:', error);
+      if (error.name !== 'AbortError') {
+        setBenchmarkProgress('❌ Benchmark fehlgeschlagen');
+        alert('Benchmark fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
+      }
+    } finally {
+      setBenchmarkRunning(false);
+      setBenchmarkAbortController(null);
+    }
+  };
+  
   const getStatusColor = (statusCode?: number) => {
     if (!statusCode) return 'bg-gray-100 text-gray-800';
     if (statusCode >= 200 && statusCode < 300) return 'bg-green-100 text-green-800';
@@ -305,7 +701,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     return 'bg-gray-100 text-gray-800';
   };
 
-  const TabButton: React.FC<{tabId: 'users' | 'global' | 'lightrag' | 'logs', label: string, icon: React.ReactNode}> = ({tabId, label, icon}) => (
+  const TabButton: React.FC<{tabId: 'users' | 'global' | 'lightrag' | 'logs' | 'benchmark' | 'branding', label: string, icon: React.ReactNode}> = ({tabId, label, icon}) => (
       <button
         onClick={() => setActiveTab(tabId)}
         className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 font-semibold text-xs sm:text-sm transition-all border-b-2 ${
@@ -320,7 +716,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   );
 
   return (
-    <div className="flex flex-col h-full text-gray-800">
+    <div className="flex flex-col h-full text-gray-800 ios-view-container">
       <Header title="Admin Einstellungen" onNavigate={onNavigate} onLogout={onLogout} showBackButton />
       
       <div className="border-b border-gray-200 bg-white/80 backdrop-blur-sm overflow-x-auto">
@@ -330,6 +726,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               <TabButton tabId="lightrag" label="LightRAG" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
               <TabButton tabId="branding" label="Branding" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
               <TabButton tabId="logs" label="Logs" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
+              <TabButton tabId="benchmark" label="Benchmark" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
           </div>
       </div>
       
@@ -344,7 +741,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                     className="w-full bg-white h-12 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
                 />
              </div>
-             <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+             <div className="flex-1 p-4 space-y-3 overflow-y-auto ios-scrollable">
                 {filteredUsers.map(user => (
                   <div key={user.id} className="bg-white p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex-1">
@@ -387,7 +784,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       )}
 
       {activeTab === 'global' && (
-          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view">
+          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
             <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
               <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
                 Der globale System-Prompt und das AI-Modell werden in allen Chats verwendet, außer wenn eine Vorlage mit eigenem System-Prompt ausgewählt ist.
@@ -568,7 +965,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       )}
 
       {activeTab === 'lightrag' && (
-          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view">
+          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
             <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
               <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
                 LightRAG erweitert Chats mit Kontext aus einer Wissensdatenbank. Diese Einstellungen gelten für alle Chats ohne Vorlage.
@@ -769,12 +1166,12 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={lightragStream}
-                    onChange={(e) => setLightragStream(e.target.checked)}
+                    checked={lightragIncludeChunkContent}
+                    onChange={(e) => setLightragIncludeChunkContent(e.target.checked)}
                     disabled={!lightragEnabled}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
-                  <span className="text-sm text-gray-700">Streaming aktivieren</span>
+                  <span className="text-sm text-gray-700">Chunk-Content in Referenzen (Debug)</span>
                 </label>
               </div>
 
@@ -790,7 +1187,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       )}
 
       {activeTab === 'branding' && (
-          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view">
+          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
             <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-6">
               <div className="p-3 rounded-md bg-purple-50 border border-purple-200 text-sm text-purple-800">
                 Passen Sie das Erscheinungsbild der App an. Änderungen werden sofort nach dem Speichern für alle Benutzer sichtbar.
@@ -952,7 +1349,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
           {/* Stats Bar */}
           {logsStats && (
             <div className="p-4 border-b border-gray-200 bg-white/80">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="bg-blue-50 p-3 rounded-lg">
                   <p className="text-xs text-gray-600">Gesamt</p>
                   <p className="text-lg font-bold text-blue-700">{logsStats.total_logs}</p>
@@ -967,7 +1364,11 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                 </div>
                 <div className="bg-purple-50 p-3 rounded-lg">
                   <p className="text-xs text-gray-600">OpenAI Tokens</p>
-                  <p className="text-lg font-bold text-purple-700">{logsStats.total_openai_tokens?.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-purple-700">{logsStats.total_openai_tokens?.toLocaleString() || '0'}</p>
+                </div>
+                <div className="bg-indigo-50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-600">Anthropic Tokens</p>
+                  <p className="text-lg font-bold text-indigo-700">{logsStats.total_anthropic_tokens?.toLocaleString() || '0'}</p>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <button
@@ -1023,7 +1424,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
           </div>
           
           {/* Logs List */}
-          <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <div className="flex-1 p-4 space-y-2 overflow-y-auto ios-scrollable">
             {isLoadingLogs ? (
               <div className="text-center py-8 text-gray-500">Lade Logs...</div>
             ) : logs.length === 0 ? (
@@ -1033,7 +1434,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                 <div key={log.id} className="bg-white p-3 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${getLogTypeColor(log.log_type)}`}>
                           {log.log_type}
                         </span>
@@ -1043,8 +1444,28 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                           </span>
                         )}
                         <span className="text-xs text-gray-500">{formatDuration(log.duration_ms)}</span>
-                        {log.openai_total_tokens && (
-                          <span className="text-xs text-purple-600 font-semibold">{log.openai_total_tokens} tokens</span>
+                        {log.ai_provider && (
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            log.ai_provider === 'anthropic' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            {log.ai_provider === 'anthropic' ? '🤖 Anthropic' : '🤖 OpenAI'}
+                          </span>
+                        )}
+                        {log.ai_total_tokens && (
+                          <span className={`text-xs font-semibold ${
+                            log.ai_provider === 'anthropic' ? 'text-indigo-600' : 'text-purple-600'
+                          }`}>
+                            {log.ai_total_tokens.toLocaleString()} tokens
+                          </span>
+                        )}
+                        {log.confidence_score !== null && log.confidence_score !== undefined && (
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            log.confidence_score >= 0.7 ? 'bg-green-100 text-green-700' :
+                            log.confidence_score >= 0.4 ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            🎯 {(log.confidence_score * 100).toFixed(0)}%
+                          </span>
                         )}
                       </div>
                       <div className="text-sm text-gray-700">
@@ -1108,28 +1529,70 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                           )}
                         </div>
                       )}
-                      {log.openai_model && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600">Model:</p>
-                            <p className="text-xs">{log.openai_model}</p>
+                      {(log.ai_model || log.openai_model) && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2">AI Provider Details:</p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600">Provider:</p>
+                              <p className="text-xs">{log.ai_provider || 'openai'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600">Model:</p>
+                              <p className="text-xs">{log.ai_model || log.openai_model}</p>
+                            </div>
+                            {log.ai_prompt_tokens && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600">Input Tokens:</p>
+                                <p className="text-xs">{log.ai_prompt_tokens.toLocaleString()}</p>
+                              </div>
+                            )}
+                            {log.ai_completion_tokens && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600">Output Tokens:</p>
+                                <p className="text-xs">{log.ai_completion_tokens.toLocaleString()}</p>
+                              </div>
+                            )}
+                            {log.ai_total_tokens && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600">Total Tokens:</p>
+                                <p className={`text-xs font-semibold ${
+                                  log.ai_provider === 'anthropic' ? 'text-indigo-600' : 'text-purple-600'
+                                }`}>{log.ai_total_tokens.toLocaleString()}</p>
+                              </div>
+                            )}
+                            {log.confidence_score !== null && log.confidence_score !== undefined && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600">Confidence:</p>
+                                <p className={`text-xs font-semibold ${
+                                  log.confidence_score >= 0.7 ? 'text-green-600' :
+                                  log.confidence_score >= 0.4 ? 'text-yellow-600' :
+                                  'text-red-600'
+                                }`}>{(log.confidence_score * 100).toFixed(1)}%</p>
+                              </div>
+                            )}
                           </div>
-                          {log.openai_prompt_tokens && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600">Prompt Tokens:</p>
-                              <p className="text-xs">{log.openai_prompt_tokens}</p>
-                            </div>
-                          )}
-                          {log.openai_completion_tokens && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600">Completion Tokens:</p>
-                              <p className="text-xs">{log.openai_completion_tokens}</p>
-                            </div>
-                          )}
-                          {log.openai_total_tokens && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600">Total Tokens:</p>
-                              <p className="text-xs font-semibold text-purple-600">{log.openai_total_tokens}</p>
+                          {log.response_data?.usage && (
+                            <div className="mt-2 p-2 bg-gray-50 rounded">
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Cache Metrics (Anthropic):</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {log.response_data.usage.cache_read_input_tokens && (
+                                  <div>
+                                    <span className="text-gray-600">Cache Read:</span>
+                                    <span className="ml-1 font-semibold text-green-600">
+                                      {log.response_data.usage.cache_read_input_tokens.toLocaleString()} tokens
+                                    </span>
+                                  </div>
+                                )}
+                                {log.response_data.usage.cache_creation_input_tokens && (
+                                  <div>
+                                    <span className="text-gray-600">Cache Write:</span>
+                                    <span className="ml-1 font-semibold text-blue-600">
+                                      {log.response_data.usage.cache_creation_input_tokens.toLocaleString()} tokens
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1166,6 +1629,383 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               >
                 {deletingUserId === userToDelete ? 'Lösche...' : 'Ja, löschen'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Benchmark Tab */}
+      {activeTab === 'benchmark' && (
+        <div className="flex-1 flex flex-col animate-fade-in-view p-6 overflow-y-auto ios-scrollable">
+          <div className="max-w-4xl mx-auto w-full space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">⚡ Performance Benchmark</h2>
+              <p className="text-gray-600 mb-6">
+                Teste die Performance deiner KI-Konfiguration. Die Anfragen werden wie echte Chats verarbeitet (inkl. LightRAG, Web Search), aber nicht in der Datenbank gespeichert.
+              </p>
+
+              {/* Benchmark Mode Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Benchmark-Modus
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setBenchmarkMode('single')}
+                    disabled={benchmarkRunning}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      benchmarkMode === 'single'
+                        ? 'border-[var(--primary-color)] bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="text-2xl mb-2">🔁</div>
+                    <div className="font-semibold text-sm">Single Query</div>
+                    <div className="text-xs text-gray-600 mt-1">Gleiche Anfrage mehrmals</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setBenchmarkMode('multi')}
+                    disabled={benchmarkRunning}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      benchmarkMode === 'multi'
+                        ? 'border-[var(--primary-color)] bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="text-2xl mb-2">👥</div>
+                    <div className="font-semibold text-sm">Multi-User</div>
+                    <div className="text-xs text-gray-600 mt-1">KI generiert verschiedene Fragen</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Execution Mode Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Ausführungs-Modus
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setExecutionMode('sequential')}
+                    disabled={benchmarkRunning}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      executionMode === 'sequential'
+                        ? 'border-[var(--primary-color)] bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="text-2xl mb-2">⏭️</div>
+                    <div className="font-semibold text-sm">Nacheinander</div>
+                    <div className="text-xs text-gray-600 mt-1">Eine nach der anderen</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setExecutionMode('parallel')}
+                    disabled={benchmarkRunning}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      executionMode === 'parallel'
+                        ? 'border-[var(--primary-color)] bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="text-2xl mb-2">⚡</div>
+                    <div className="font-semibold text-sm">Parallel</div>
+                    <div className="text-xs text-gray-600 mt-1">Alle gleichzeitig (Last-Test)</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Benchmark Configuration */}
+              <div className="space-y-4 mb-6">
+                {benchmarkMode === 'single' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Test-Anfrage
+                      </label>
+                      <textarea
+                        value={benchmarkQuery}
+                        onChange={(e) => setBenchmarkQuery(e.target.value)}
+                        placeholder="z.B. Erkläre mir Quantencomputing in einfachen Worten..."
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] resize-none"
+                        disabled={benchmarkRunning}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Anzahl Iterationen
+                      </label>
+                      <input
+                        type="number"
+                        value={benchmarkIterations}
+                        onChange={(e) => setBenchmarkIterations(Math.max(1, parseInt(e.target.value) || 1))}
+                        min="1"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+                        disabled={benchmarkRunning}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Die Anfrage wird {benchmarkIterations}x gesendet
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Anzahl simulierter Benutzer
+                    </label>
+                    <input
+                      type="number"
+                      value={simulatedUsers}
+                      onChange={(e) => setSimulatedUsers(Math.max(1, parseInt(e.target.value) || 1))}
+                      min="1"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)]"
+                      disabled={benchmarkRunning}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Die KI generiert {simulatedUsers} verschiedene Anfragen
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress */}
+              {benchmarkProgress && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-900">{benchmarkProgress}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={handleRunBenchmark}
+                  disabled={benchmarkRunning || (benchmarkMode === 'single' && !benchmarkQuery.trim())}
+                  className="px-6 py-3 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {benchmarkRunning ? '🔄 Benchmark läuft...' : '▶️ Benchmark starten'}
+                </button>
+                
+                {benchmarkRunning && (
+                  <button
+                    onClick={handleCancelBenchmark}
+                    className="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    ⛔ Abbrechen
+                  </button>
+                )}
+              </div>
+
+              {/* Live Monitoring während Benchmark läuft */}
+              {(benchmarkRunning || liveMetrics.length > 0) && (
+                <div className="mt-6">
+                  <BenchmarkLiveMonitor
+                    metrics={liveMetrics}
+                    totalRequests={benchmarkMode === 'multi' ? simulatedUsers : benchmarkIterations}
+                    isRunning={benchmarkRunning}
+                  />
+                </div>
+              )}
+
+              {/* Results */}
+              {benchmarkResults && (
+                <div className="mt-6 space-y-4">
+                  <h3 className="text-lg font-bold text-gray-900">📊 Ergebnisse</h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="text-sm text-blue-600 font-medium mb-1">Gesamt-Zeit</div>
+                      <div className="text-2xl font-bold text-blue-900">{benchmarkResults.totalTime.toFixed(2)}s</div>
+                    </div>
+                    
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <div className="text-sm text-green-600 font-medium mb-1">Durchschnitt</div>
+                      <div className="text-2xl font-bold text-green-900">{benchmarkResults.avgTime.toFixed(2)}s</div>
+                    </div>
+                    
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <div className="text-sm text-purple-600 font-medium mb-1">Schnellste</div>
+                      <div className="text-2xl font-bold text-purple-900">{benchmarkResults.minTime.toFixed(2)}s</div>
+                    </div>
+                    
+                    <div className="bg-orange-50 rounded-lg p-4">
+                      <div className="text-sm text-orange-600 font-medium mb-1">Langsamste</div>
+                      <div className="text-2xl font-bold text-orange-900">{benchmarkResults.maxTime.toFixed(2)}s</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 font-medium mb-2">Details</div>
+                    <div className="space-y-1 text-sm text-gray-700">
+                      <div>🎯 Modus: {benchmarkResults.mode}</div>
+                      <div>⚙️ Ausführung: {benchmarkResults.executionMode}</div>
+                      <div>✅ Erfolgreiche Anfragen: {benchmarkResults.successCount}/{benchmarkResults.totalRequests}</div>
+                      <div>❌ Fehlgeschlagene Anfragen: {benchmarkResults.errorCount}</div>
+                      <div>📈 Requests/Sekunde: {benchmarkResults.requestsPerSecond.toFixed(2)}</div>
+                      <div>🔧 Konfiguration: {benchmarkResults.config}</div>
+                    </div>
+                  </div>
+
+                  {benchmarkResults.errors && benchmarkResults.errors.length > 0 && (
+                    <div className="bg-red-50 rounded-lg p-4">
+                      <div className="text-sm text-red-600 font-medium mb-2">⚠️ Fehler</div>
+                      <div className="space-y-1 text-xs text-red-700 max-h-40 overflow-y-auto">
+                        {benchmarkResults.errors.map((error: string, idx: number) => (
+                          <div key={idx}>• {error}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detailed Performance Metrics */}
+                  {benchmarkResults.detailedMetrics && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">🔬 Detaillierte Performance-Metriken</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* AI Response Times */}
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                          <div className="text-sm font-semibold text-blue-900 mb-3">🤖 AI-Antwortzeit</div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Durchschnitt:</span>
+                              <span className="font-bold text-blue-900">{benchmarkResults.detailedMetrics.ai_response.avg.toFixed(0)}ms</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Schnellste:</span>
+                              <span className="font-semibold text-blue-900">{benchmarkResults.detailedMetrics.ai_response.min.toFixed(0)}ms</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">Langsamste:</span>
+                              <span className="font-semibold text-blue-900">{benchmarkResults.detailedMetrics.ai_response.max.toFixed(0)}ms</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* First Token Time */}
+                        {benchmarkResults.detailedMetrics.first_token.avg > 0 && (
+                          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                            <div className="text-sm font-semibold text-green-900 mb-3">⚡ Zeit bis erstes Token</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-green-700">Durchschnitt:</span>
+                                <span className="font-bold text-green-900">{benchmarkResults.detailedMetrics.first_token.avg.toFixed(0)}ms</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-green-700">Schnellste:</span>
+                                <span className="font-semibold text-green-900">{benchmarkResults.detailedMetrics.first_token.min.toFixed(0)}ms</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-green-700">Langsamste:</span>
+                                <span className="font-semibold text-green-900">{benchmarkResults.detailedMetrics.first_token.max.toFixed(0)}ms</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* LightRAG Performance */}
+                        {benchmarkResults.detailedMetrics.lightrag.avg > 0 && (
+                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                            <div className="text-sm font-semibold text-purple-900 mb-3">🔍 LightRAG-Abfrage</div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">Durchschnitt:</span>
+                                <span className="font-bold text-purple-900">{benchmarkResults.detailedMetrics.lightrag.avg.toFixed(0)}ms</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">Schnellste:</span>
+                                <span className="font-semibold text-purple-900">{benchmarkResults.detailedMetrics.lightrag.min.toFixed(0)}ms</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-purple-700">Langsamste:</span>
+                                <span className="font-semibold text-purple-900">{benchmarkResults.detailedMetrics.lightrag.max.toFixed(0)}ms</span>
+                              </div>
+                              <div className="flex justify-between pt-2 border-t border-purple-200">
+                                <span className="text-purple-700">Ø Kontext-Länge:</span>
+                                <span className="font-semibold text-purple-900">{benchmarkResults.detailedMetrics.lightrag_context.avg.toFixed(0)} Zeichen</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Token Statistics */}
+                        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200">
+                          <div className="text-sm font-semibold text-yellow-900 mb-3">📝 Token-Statistiken</div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-yellow-700">Ø Tokens/Antwort:</span>
+                              <span className="font-bold text-yellow-900">{benchmarkResults.detailedMetrics.tokens.avg.toFixed(0)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-yellow-700">Gesamt Tokens:</span>
+                              <span className="font-semibold text-yellow-900">{benchmarkResults.detailedMetrics.tokens.total.toFixed(0)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-yellow-700">Ø Tokens/Sekunde:</span>
+                              <span className="font-semibold text-yellow-900">{benchmarkResults.detailedMetrics.tokens.per_second_avg.toFixed(1)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Response Length */}
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
+                          <div className="text-sm font-semibold text-indigo-900 mb-3">📏 Antwort-Länge</div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-indigo-700">Ø Zeichen:</span>
+                              <span className="font-bold text-indigo-900">{benchmarkResults.detailedMetrics.response_length.avg.toFixed(0)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-indigo-700">Kürzeste:</span>
+                              <span className="font-semibold text-indigo-900">{benchmarkResults.detailedMetrics.response_length.min.toFixed(0)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-indigo-700">Längste:</span>
+                              <span className="font-semibold text-indigo-900">{benchmarkResults.detailedMetrics.response_length.max.toFixed(0)}</span>
+                            </div>
+                            <div className="flex justify-between pt-2 border-t border-indigo-200">
+                              <span className="text-indigo-700">Gesamt:</span>
+                              <span className="font-semibold text-indigo-900">{benchmarkResults.detailedMetrics.response_length.total.toFixed(0)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Settings Load Time */}
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                          <div className="text-sm font-semibold text-gray-900 mb-3">⚙️ Settings-Ladezeit</div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Durchschnitt:</span>
+                              <span className="font-bold text-gray-900">{benchmarkResults.detailedMetrics.settings_load.avg.toFixed(1)}ms</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Schnellste:</span>
+                              <span className="font-semibold text-gray-900">{benchmarkResults.detailedMetrics.settings_load.min.toFixed(1)}ms</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Langsamste:</span>
+                              <span className="font-semibold text-gray-900">{benchmarkResults.detailedMetrics.settings_load.max.toFixed(1)}ms</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">ℹ️ Hinweise</h4>
+              <ul className="text-xs text-blue-800 space-y-1">
+                <li>• Benchmark-Anfragen werden nicht in der Datenbank gespeichert</li>
+                <li>• LightRAG und Web Search werden wie bei echten Anfragen verwendet</li>
+                <li>• Die aktuelle System-Konfiguration wird verwendet</li>
+                <li>• Streaming ist während des Benchmarks deaktiviert</li>
+              </ul>
             </div>
           </div>
         </div>
