@@ -124,6 +124,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         openai_model: openaiModel,
         anthropic_model: anthropicModel,
         anthropic_web_search_enabled: anthropicWebSearchEnabled,
+        gemini_model: geminiModel,
         streaming_enabled: streamingEnabled,
       });
       // Also update local state
@@ -133,6 +134,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         openai_model: openaiModel,
         anthropic_model: anthropicModel,
         anthropic_web_search_enabled: anthropicWebSearchEnabled,
+        gemini_model: geminiModel,
         streaming_enabled: streamingEnabled,
       });
       setSaveSuccess(true);
