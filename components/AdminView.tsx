@@ -904,6 +904,31 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               </div>
             )}
 
+            {aiProvider === 'gemini' && (
+              <div>
+                <label htmlFor="geminiModel" className="block text-sm font-medium text-gray-600 mb-2">
+                  Google Gemini Modell
+                </label>
+                <select
+                  id="geminiModel"
+                  value={geminiModel}
+                  onChange={(e) => setGeminiModel(e.target.value)}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                >
+                  <optgroup label="Gemini 2.0 (Preview)">
+                    <option value="gemini-2.0-flash">gemini-2.0-flash - Schnell & Effizient</option>
+                  </optgroup>
+                  <optgroup label="Gemini 1.5 (Production)">
+                    <option value="gemini-1.5-pro">gemini-1.5-pro - Beste Qualität</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash - Schnell & Günstig</option>
+                  </optgroup>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  <strong>Hinweis:</strong> Benötigt einen API Key von Google AI Studio.
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
