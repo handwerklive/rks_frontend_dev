@@ -21,7 +21,7 @@ interface AdminViewProps {
 const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser, onNavigate, onLogout, settings, onUpdateSettings }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'global' | 'lightrag' | 'branding' | 'logs' | 'benchmark'>('users');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Benchmark State
   const [benchmarkQuery, setBenchmarkQuery] = useState('');
   const [benchmarkIterations, setBenchmarkIterations] = useState(10);
@@ -32,7 +32,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const [benchmarkProgress, setBenchmarkProgress] = useState<string>('');
   const [executionMode, setExecutionMode] = useState<'sequential' | 'parallel'>('sequential');
   const [benchmarkAbortController, setBenchmarkAbortController] = useState<AbortController | null>(null);
-  
+
   // Live Monitoring State
   const [liveMetrics, setLiveMetrics] = useState<Array<{
     index: number;
@@ -42,15 +42,16 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     metrics?: any;
     error?: string;
   }>>([]);
-  
+
   // Global Settings State
   const [globalSystemPrompt, setGlobalSystemPrompt] = useState('');
-  const [aiProvider, setAiProvider] = useState<'openai' | 'anthropic'>('openai');
+  const [aiProvider, setAiProvider] = useState<'openai' | 'anthropic' | 'gemini'>('openai');
   const [openaiModel, setOpenaiModel] = useState('gpt-5-nano');
   const [anthropicModel, setAnthropicModel] = useState('claude-sonnet-4-5-20250929');
   const [anthropicWebSearchEnabled, setAnthropicWebSearchEnabled] = useState(false);
+  const [geminiModel, setGeminiModel] = useState('gemini-2.0-flash');
   const [streamingEnabled, setStreamingEnabled] = useState(true);
-  
+
   // LightRAG Settings
   const [lightragEnabled, setLightragEnabled] = useState(false);
   const [lightragUrl, setLightragUrl] = useState('https://rks-lightrag.root.handwerker-bot.de/query/data');
@@ -65,19 +66,19 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const [lightragEnableRerank, setLightragEnableRerank] = useState(false);
   const [lightragIncludeReferences, setLightragIncludeReferences] = useState(false);
   const [lightragIncludeChunkContent, setLightragIncludeChunkContent] = useState(false);
-  
+
   // Branding Settings
   const [primaryColor, setPrimaryColor] = useState('#59B4E2');
   const [secondaryColor, setSecondaryColor] = useState('#62B04A');
   const [logoUrl, setLogoUrl] = useState('https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png');
   const [appTitle, setAppTitle] = useState('RKS Chatbot');
-  
+
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  
+
   // Logs State
   const [logs, setLogs] = useState<any[]>([]);
   const [logsStats, setLogsStats] = useState<any>(null);
@@ -94,6 +95,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     setOpenaiModel(settings.openai_model || 'gpt-5-nano');
     setAnthropicModel(settings.anthropic_model || 'claude-sonnet-4-5-20250929');
     setAnthropicWebSearchEnabled(settings.anthropic_web_search_enabled || false);
+    setGeminiModel(settings.gemini_model || 'gemini-2.0-flash');
     setStreamingEnabled(settings.streaming_enabled !== undefined ? settings.streaming_enabled : true);
     setLightragEnabled(settings.lightrag_enabled || false);
     setLightragUrl(settings.lightrag_url || 'https://rks-lightrag.root.handwerker-bot.de/query/data');
@@ -116,21 +118,23 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const handleSaveGlobalSettings = async () => {
     setIsSaving(true);
     try {
-      await settingsAPI.updateGlobal({ 
+      await settingsAPI.updateGlobal({
         global_system_prompt: globalSystemPrompt,
         ai_provider: aiProvider,
         openai_model: openaiModel,
         anthropic_model: anthropicModel,
         anthropic_web_search_enabled: anthropicWebSearchEnabled,
+        gemini_model: geminiModel,
         streaming_enabled: streamingEnabled,
       });
       // Also update local state
-      onUpdateSettings({ 
+      onUpdateSettings({
         globalSystemPrompt: globalSystemPrompt,
         ai_provider: aiProvider,
         openai_model: openaiModel,
         anthropic_model: anthropicModel,
         anthropic_web_search_enabled: anthropicWebSearchEnabled,
+        gemini_model: geminiModel,
         streaming_enabled: streamingEnabled,
       });
       setSaveSuccess(true);
@@ -142,11 +146,11 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       setIsSaving(false);
     }
   };
-  
+
   const handleSaveLightRAGSettings = async () => {
     setIsSaving(true);
     try {
-      await settingsAPI.updateGlobal({ 
+      await settingsAPI.updateGlobal({
         lightrag_enabled: lightragEnabled,
         lightrag_url: lightragUrl,
         lightrag_api_key: lightragApiKey,
@@ -161,7 +165,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         lightrag_include_chunk_content: lightragIncludeChunkContent
       });
       // Also update local state
-      onUpdateSettings({ 
+      onUpdateSettings({
         lightrag_enabled: lightragEnabled,
         lightrag_url: lightragUrl,
         lightrag_api_key: lightragApiKey,
@@ -185,8 +189,8 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     }
   };
 
-  const filteredUsers = useMemo(() => 
-    users.filter(user => 
+  const filteredUsers = useMemo(() =>
+    users.filter(user =>
       (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     ), [users, searchTerm]);
@@ -198,10 +202,10 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   };
 
   const handleStatusChange = async (userId: string, currentStatus: UserStatus) => {
-      setUpdatingUserId(userId);
-      const newStatus = currentStatus === UserStatus.ACTIVE ? UserStatus.PENDING : UserStatus.ACTIVE;
-      await onUpdateUser(userId, { status: newStatus });
-      setUpdatingUserId(null);
+    setUpdatingUserId(userId);
+    const newStatus = currentStatus === UserStatus.ACTIVE ? UserStatus.PENDING : UserStatus.ACTIVE;
+    await onUpdateUser(userId, { status: newStatus });
+    setUpdatingUserId(null);
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -218,18 +222,18 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const handleSaveBrandingSettings = async () => {
     setIsSaving(true);
     try {
-      await settingsAPI.updateGlobal({ 
+      await settingsAPI.updateGlobal({
         primary_color: primaryColor,
         secondary_color: secondaryColor,
         logo_url: logoUrl,
         app_title: appTitle,
       });
-      
+
       // Update CSS variables and document title immediately
       document.documentElement.style.setProperty('--primary-color', primaryColor);
       document.documentElement.style.setProperty('--secondary-color', secondaryColor);
       document.title = appTitle;
-      
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (error: any) {
@@ -239,7 +243,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       setIsSaving(false);
     }
   };
-  
+
   // Load logs when logs tab is active
   useEffect(() => {
     if (activeTab === 'logs') {
@@ -247,7 +251,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       loadLogsStats();
     }
   }, [activeTab, logSearchTerm, logTypeFilter, sortBy, sortOrder]);
-  
+
   const loadLogs = async () => {
     setIsLoadingLogs(true);
     try {
@@ -265,7 +269,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       setIsLoadingLogs(false);
     }
   };
-  
+
   const loadLogsStats = async () => {
     try {
       const stats = await logsAPI.getStats();
@@ -274,7 +278,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       console.error('Error loading logs stats:', error);
     }
   };
-  
+
   const handleDeleteLog = async (logId: number) => {
     if (!confirm('Möchten Sie diesen Log-Eintrag wirklich löschen?')) return;
     try {
@@ -286,7 +290,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       alert('Fehler beim Löschen: ' + (error.response?.data?.detail || error.message));
     }
   };
-  
+
   const handleDeleteAllLogs = async () => {
     if (!confirm('Möchten Sie wirklich ALLE Logs löschen? Diese Aktion kann nicht rückgängig gemacht werden!')) return;
     try {
@@ -298,17 +302,17 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       alert('Fehler beim Löschen: ' + (error.response?.data?.detail || error.message));
     }
   };
-  
+
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(2)}s`;
   };
-  
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('de-DE');
   };
-  
+
   const getLogTypeColor = (logType: string) => {
     switch (logType) {
       case 'chat_message': return 'bg-blue-100 text-blue-800';
@@ -318,7 +322,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-  
+
   const handleCancelBenchmark = () => {
     if (benchmarkAbortController) {
       benchmarkAbortController.abort();
@@ -331,22 +335,22 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
   const handleRunBenchmark = async () => {
     if (benchmarkMode === 'single' && !benchmarkQuery.trim()) return;
     if (benchmarkRunning) return;
-    
+
     // Create new AbortController
     const abortController = new AbortController();
     setBenchmarkAbortController(abortController);
-    
+
     setBenchmarkRunning(true);
     setBenchmarkResults(null);
     setBenchmarkProgress('');
     setLiveMetrics([]);
-    
+
     const times: number[] = [];
     const errors: string[] = [];
     let successCount = 0;
     const startTime = Date.now();
     let wasCancelled = false;
-    
+
     // Detailed metrics collection
     const detailedMetrics = {
       lightrag_times: [] as number[],
@@ -359,15 +363,15 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       tokens_per_second: [] as number[],
       lightrag_context_lengths: [] as number[]
     };
-    
+
     try {
       // Import chatsAPI
       const { chatsAPI } = await import('../lib/api');
-      
+
       if (benchmarkMode === 'multi') {
         // Multi-User Simulation: KI generiert Fragen
         setBenchmarkProgress('🤖 Generiere Fragen für Benutzer-Simulation...');
-        
+
         let generatedQuestions: string[] = [];
         try {
           const response = await chatsAPI.sendBenchmarkMessage(
@@ -379,53 +383,53 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
             2. Erkläre mir Quantenphysik
             3. Schreibe eine E-Mail an meinen Chef`
           );
-          
+
           // Parse die generierten Fragen
           const lines = response.response.split('\n').filter((line: string) => line.trim());
           generatedQuestions = lines
             .map((line: string) => line.replace(/^\d+\.\s*/, '').trim())
             .filter((q: string) => q.length > 0)
             .slice(0, simulatedUsers);
-          
+
           if (generatedQuestions.length === 0) {
             throw new Error('Keine Fragen generiert');
           }
-          
+
           setBenchmarkProgress(`✅ ${generatedQuestions.length} Fragen generiert. Starte Simulation...`);
         } catch (error: any) {
           errors.push('Fragen-Generierung fehlgeschlagen: ' + error.message);
           setBenchmarkProgress('❌ Fragen-Generierung fehlgeschlagen');
           throw error;
         }
-        
+
         // Sende alle generierten Fragen
         if (executionMode === 'parallel') {
           // Parallel: Alle gleichzeitig
           setBenchmarkProgress(`🚀 Sende ${generatedQuestions.length} Anfragen parallel...`);
-          
+
           const promises = generatedQuestions.map(async (question, i) => {
             const iterationStart = Date.now();
             try {
               const response = await chatsAPI.sendBenchmarkMessage(question);
               const iterationTime = (Date.now() - iterationStart) / 1000;
               const result = { success: true, time: iterationTime, index: i, metrics: response.metrics, timestamp: Date.now() };
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, result]);
-              
+
               return result;
             } catch (error: any) {
               const result = { success: false, error: error.message || 'Unbekannter Fehler', index: i, time: 0, timestamp: Date.now() };
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, result]);
-              
+
               return result;
             }
           });
-          
+
           const results = await Promise.all(promises);
-          
+
           results.forEach(result => {
             if (result.success) {
               times.push(result.time);
@@ -454,17 +458,17 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               wasCancelled = true;
               break;
             }
-            
+
             setBenchmarkProgress(`📤 Benutzer ${i + 1}/${generatedQuestions.length}: "${generatedQuestions[i].substring(0, 50)}..."`);
             const iterationStart = Date.now();
-            
+
             try {
               const response = await chatsAPI.sendBenchmarkMessage(generatedQuestions[i]);
-              
+
               const iterationTime = (Date.now() - iterationStart) / 1000;
               times.push(iterationTime);
               successCount++;
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, {
                 index: i,
@@ -473,7 +477,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                 timestamp: Date.now(),
                 metrics: response.metrics
               }]);
-              
+
               // Collect detailed metrics
               if (response.metrics) {
                 detailedMetrics.lightrag_times.push(response.metrics.lightrag_query_ms || 0);
@@ -489,7 +493,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
             } catch (error: any) {
               errors.push(`Benutzer ${i + 1}: ${error.message || 'Unbekannter Fehler'}`);
               console.error(`Benchmark user ${i + 1} failed:`, error);
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, {
                 index: i,
@@ -506,30 +510,30 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
         if (executionMode === 'parallel') {
           // Parallel: Alle gleichzeitig
           setBenchmarkProgress(`🚀 Sende ${benchmarkIterations} Anfragen parallel...`);
-          
+
           const promises = Array.from({ length: benchmarkIterations }, async (_, i) => {
             const iterationStart = Date.now();
             try {
               const response = await chatsAPI.sendBenchmarkMessage(benchmarkQuery);
               const iterationTime = (Date.now() - iterationStart) / 1000;
               const result = { success: true, time: iterationTime, index: i, metrics: response.metrics, timestamp: Date.now() };
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, result]);
-              
+
               return result;
             } catch (error: any) {
               const result = { success: false, error: error.message || 'Unbekannter Fehler', index: i, time: 0, timestamp: Date.now() };
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, result]);
-              
+
               return result;
             }
           });
-          
+
           const results = await Promise.all(promises);
-          
+
           results.forEach(result => {
             if (result.success) {
               times.push(result.time);
@@ -558,17 +562,17 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               wasCancelled = true;
               break;
             }
-            
+
             setBenchmarkProgress(`📤 Anfrage ${i + 1}/${benchmarkIterations}...`);
             const iterationStart = Date.now();
-            
+
             try {
               const response = await chatsAPI.sendBenchmarkMessage(benchmarkQuery);
-              
+
               const iterationTime = (Date.now() - iterationStart) / 1000;
               times.push(iterationTime);
               successCount++;
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, {
                 index: i,
@@ -577,7 +581,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                 timestamp: Date.now(),
                 metrics: response.metrics
               }]);
-              
+
               // Collect detailed metrics
               if (response.metrics) {
                 detailedMetrics.lightrag_times.push(response.metrics.lightrag_query_ms || 0);
@@ -593,7 +597,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
             } catch (error: any) {
               errors.push(`Iteration ${i + 1}: ${error.message || 'Unbekannter Fehler'}`);
               console.error(`Benchmark iteration ${i + 1} failed:`, error);
-              
+
               // Live update
               setLiveMetrics(prev => [...prev, {
                 index: i,
@@ -606,26 +610,26 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
           }
         }
       }
-      
+
       // Check if cancelled before showing results
       if (wasCancelled) {
         setBenchmarkProgress('❌ Benchmark abgebrochen');
         return;
       }
-      
+
       const totalTime = (Date.now() - startTime) / 1000;
       const avgTime = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
       const minTime = times.length > 0 ? Math.min(...times) : 0;
       const maxTime = times.length > 0 ? Math.max(...times) : 0;
       const requestsPerSecond = successCount / totalTime;
-      
+
       const config = `${aiProvider.toUpperCase()} ${aiProvider === 'openai' ? openaiModel : anthropicModel}${lightragEnabled ? ' + LightRAG' : ''}${anthropicWebSearchEnabled ? ' + Web Search' : ''}`;
-      
+
       // Calculate aggregated detailed metrics
       const calcAvg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
       const calcMin = (arr: number[]) => arr.length > 0 ? Math.min(...arr) : 0;
       const calcMax = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : 0;
-      
+
       const aggregatedMetrics = {
         lightrag: {
           avg: calcAvg(detailedMetrics.lightrag_times),
@@ -663,9 +667,9 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
           max: calcMax(detailedMetrics.lightrag_context_lengths)
         }
       };
-      
+
       setBenchmarkProgress('✅ Benchmark abgeschlossen!');
-      
+
       setBenchmarkResults({
         totalTime,
         avgTime,
@@ -692,7 +696,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
       setBenchmarkAbortController(null);
     }
   };
-  
+
   const getStatusColor = (statusCode?: number) => {
     if (!statusCode) return 'bg-gray-100 text-gray-800';
     if (statusCode >= 200 && statusCode < 300) return 'bg-green-100 text-green-800';
@@ -701,118 +705,117 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
     return 'bg-gray-100 text-gray-800';
   };
 
-  const TabButton: React.FC<{tabId: 'users' | 'global' | 'lightrag' | 'logs' | 'benchmark' | 'branding', label: string, icon: React.ReactNode}> = ({tabId, label, icon}) => (
-      <button
-        onClick={() => setActiveTab(tabId)}
-        className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 font-semibold text-xs sm:text-sm transition-all border-b-2 ${
-            activeTab === tabId
-            ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
-            : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+  const TabButton: React.FC<{ tabId: 'users' | 'global' | 'lightrag' | 'logs' | 'benchmark' | 'branding', label: string, icon: React.ReactNode }> = ({ tabId, label, icon }) => (
+    <button
+      onClick={() => setActiveTab(tabId)}
+      className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 sm:py-3 font-semibold text-xs sm:text-sm transition-all border-b-2 ${activeTab === tabId
+        ? 'border-[var(--primary-color)] text-[var(--primary-color)]'
+        : 'border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-800'
         }`}
-      >
-        <span className="hidden sm:inline">{icon}</span>
-        <span className="truncate">{label}</span>
-      </button>
+    >
+      <span className="hidden sm:inline">{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
   );
 
   return (
     <div className="flex flex-col h-full text-gray-800 ios-view-container">
       <Header title="Admin Einstellungen" onNavigate={onNavigate} onLogout={onLogout} showBackButton />
-      
+
       <div className="border-b border-gray-200 bg-white/80 backdrop-blur-sm overflow-x-auto">
-          <div className="flex min-w-max sm:min-w-0">
-              <TabButton tabId="users" label="Benutzer" icon={<UserIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
-              <TabButton tabId="global" label="System" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
-              <TabButton tabId="lightrag" label="LightRAG" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
-              <TabButton tabId="branding" label="Branding" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
-              <TabButton tabId="logs" label="Logs" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
-              <TabButton tabId="benchmark" label="Benchmark" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5"/>} />
-          </div>
+        <div className="flex min-w-max sm:min-w-0">
+          <TabButton tabId="users" label="Benutzer" icon={<UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />} />
+          <TabButton tabId="global" label="System" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5" />} />
+          <TabButton tabId="lightrag" label="LightRAG" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5" />} />
+          <TabButton tabId="branding" label="Branding" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5" />} />
+          <TabButton tabId="logs" label="Logs" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5" />} />
+          <TabButton tabId="benchmark" label="Benchmark" icon={<WrenchIcon className="w-4 h-4 sm:w-5 sm:h-5" />} />
+        </div>
       </div>
-      
+
       {activeTab === 'users' && (
         <div className="flex-1 flex flex-col animate-fade-in-view min-h-0">
-             <div className="p-4 border-b border-gray-200">
-                <input
-                    type="text"
-                    placeholder="Benutzer suchen..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white h-12 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
-                />
-             </div>
-             <div className="flex-1 p-4 space-y-3 overflow-y-auto ios-scrollable">
-                {filteredUsers.map(user => (
-                  <div key={user.id} className="bg-white p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{user.name || 'N/A'}</p>
-                      <p className="text-sm text-gray-600">{user.email}</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <select 
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                        disabled={updatingUserId === user.id}
-                        className="bg-gray-100 border border-gray-300 rounded-md px-2 h-12 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] disabled:opacity-50"
-                      >
-                        <option value={UserRole.ADMIN}>Admin</option>
-                        <option value={UserRole.USER}>User</option>
-                      </select>
-                      <button
-                        onClick={() => handleStatusChange(user.id, user.status)}
-                        disabled={updatingUserId === user.id}
-                        className={`px-3 h-12 text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${
-                          user.status === UserStatus.ACTIVE 
-                          ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30' 
-                          : 'bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30'
-                        }`}
-                      >
-                        {updatingUserId === user.id ? '...' : (user.status === UserStatus.ACTIVE ? 'Aktiv' : 'Ausstehend')}
-                      </button>
-                      <button
-                        onClick={() => setUserToDelete(user.id)}
-                        disabled={deletingUserId === user.id}
-                        className="px-3 h-12 text-sm font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
-                      >
-                        {deletingUserId === user.id ? '...' : 'Löschen'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+          <div className="p-4 border-b border-gray-200">
+            <input
+              type="text"
+              placeholder="Benutzer suchen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white h-12 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+            />
+          </div>
+          <div className="flex-1 p-4 space-y-3 overflow-y-auto ios-scrollable">
+            {filteredUsers.map(user => (
+              <div key={user.id} className="bg-white p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">{user.name || 'N/A'}</p>
+                  <p className="text-sm text-gray-600">{user.email}</p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <select
+                    value={user.role}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                    disabled={updatingUserId === user.id}
+                    className="bg-gray-100 border border-gray-300 rounded-md px-2 h-12 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] disabled:opacity-50"
+                  >
+                    <option value={UserRole.ADMIN}>Admin</option>
+                    <option value={UserRole.USER}>User</option>
+                  </select>
+                  <button
+                    onClick={() => handleStatusChange(user.id, user.status)}
+                    disabled={updatingUserId === user.id}
+                    className={`px-3 h-12 text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${user.status === UserStatus.ACTIVE
+                      ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30'
+                      : 'bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30'
+                      }`}
+                  >
+                    {updatingUserId === user.id ? '...' : (user.status === UserStatus.ACTIVE ? 'Aktiv' : 'Ausstehend')}
+                  </button>
+                  <button
+                    onClick={() => setUserToDelete(user.id)}
+                    disabled={deletingUserId === user.id}
+                    className="px-3 h-12 text-sm font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
+                  >
+                    {deletingUserId === user.id ? '...' : 'Löschen'}
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {activeTab === 'global' && (
-          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
-              <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-                Der globale System-Prompt und das AI-Modell werden in allen Chats verwendet, außer wenn eine Vorlage mit eigenem System-Prompt ausgewählt ist.
-              </div>
+        <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
+          <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
+            <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
+              Der globale System-Prompt und das AI-Modell werden in allen Chats verwendet, außer wenn eine Vorlage mit eigenem System-Prompt ausgewählt ist.
+            </div>
 
+            <div>
+              <label htmlFor="aiProvider" className="block text-sm font-medium text-gray-600 mb-2">
+                AI Provider
+              </label>
+              <select
+                id="aiProvider"
+                value={aiProvider}
+                onChange={(e) => setAiProvider(e.target.value as 'openai' | 'anthropic')}
+                className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+              >
+                <option value="openai">OpenAI (GPT-4, GPT-5, o1, o3, o4)</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="gemini">Google (Gemini)</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-2">
+                Wähle den AI-Provider für alle Chats. Stelle sicher, dass der entsprechende API-Key in der .env-Datei konfiguriert ist.
+              </p>
+            </div>
+
+            {aiProvider === 'openai' && (
               <div>
-                <label htmlFor="aiProvider" className="block text-sm font-medium text-gray-600 mb-2">
-                  AI Provider
+                <label htmlFor="openaiModel" className="block text-sm font-medium text-gray-600 mb-2">
+                  OpenAI Modell
                 </label>
-                <select
-                  id="aiProvider"
-                  value={aiProvider}
-                  onChange={(e) => setAiProvider(e.target.value as 'openai' | 'anthropic')}
-                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
-                >
-                  <option value="openai">OpenAI (GPT-4, GPT-5, o1, o3, o4)</option>
-                  <option value="anthropic">Anthropic (Claude)</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-2">
-                  Wähle den AI-Provider für alle Chats. Stelle sicher, dass der entsprechende API-Key in der .env-Datei konfiguriert ist.
-                </p>
-              </div>
-
-              {aiProvider === 'openai' && (
-                <div>
-                  <label htmlFor="openaiModel" className="block text-sm font-medium text-gray-600 mb-2">
-                    OpenAI Modell
-                  </label>
                 <select
                   id="openaiModel"
                   value={openaiModel}
@@ -862,486 +865,516 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                   </optgroup>
                 </select>
                 <p className="text-xs text-gray-500 mt-2">
-                  <strong>Preise:</strong> Input / Output pro 1M Tokens (Standard-Tier)<br/>
-                  <strong>⭐ Empfohlen:</strong> gpt-5-nano für bestes Preis-Leistungs-Verhältnis ($0.05 / $0.40)<br/>
-                  <strong>Reasoning:</strong> o-Serie für komplexe Problemlösung und Deep Research<br/>
+                  <strong>Preise:</strong> Input / Output pro 1M Tokens (Standard-Tier)<br />
+                  <strong>⭐ Empfohlen:</strong> gpt-5-nano für bestes Preis-Leistungs-Verhältnis ($0.05 / $0.40)<br />
+                  <strong>Reasoning:</strong> o-Serie für komplexe Problemlösung und Deep Research<br />
                   <strong>Hinweis:</strong> Nur Text-Modelle. Cached Input und Batch/Flex/Priority-Preise können abweichen
                 </p>
-                </div>
-              )}
+              </div>
+            )}
 
-              {aiProvider === 'anthropic' && (
-                <div>
-                  <label htmlFor="anthropicModel" className="block text-sm font-medium text-gray-600 mb-2">
-                    Anthropic Claude Modell
-                  </label>
-                  <select
-                    id="anthropicModel"
-                    value={anthropicModel}
-                    onChange={(e) => setAnthropicModel(e.target.value)}
-                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
-                  >
-                    <optgroup label="Claude 4.5 (Neueste Generation - 2025)">
-                      <option value="claude-sonnet-4-5-20250929">claude-sonnet-4-5 - Beste Coding & Reasoning - $3.00 / $15.00 ⭐</option>
-                      <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 - Schnellstes Modell - $1.00 / $5.00 🚀</option>
-                    </optgroup>
-                    <optgroup label="Claude 3.5 (Bewährt)">
-                      <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 - Sonnet Oktober - $3.00 / $15.00</option>
-                      <option value="claude-3-5-sonnet-20240620">claude-3-5-sonnet-20240620 - Sonnet Juni - $3.00 / $15.00</option>
-                      <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 - Haiku 3.5 - $1.00 / $5.00</option>
-                    </optgroup>
-                    <optgroup label="Claude 3 (Legacy)">
-                      <option value="claude-3-opus-20240229">claude-3-opus-20240229 - Höchste Qualität - $15.00 / $75.00</option>
-                      <option value="claude-3-sonnet-20240229">claude-3-sonnet-20240229 - Ausgewogen - $3.00 / $15.00</option>
-                      <option value="claude-3-haiku-20240307">claude-3-haiku-20240307 - Schnell - $0.25 / $1.25</option>
-                    </optgroup>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    <strong>Preise:</strong> Input / Output pro 1M Tokens<br/>
-                    <strong>⭐ Empfohlen:</strong> claude-sonnet-4-5 für beste Coding & Reasoning Performance<br/>
-                    <strong>🚀 Schnellste:</strong> claude-haiku-4-5 - 4-5x schneller als Sonnet 4.5<br/>
-                    <strong>Hinweis:</strong> Claude-Modelle haben 200K Token Context Window
-                  </p>
-                </div>
-              )}
+            {aiProvider === 'anthropic' && (
+              <div>
+                <label htmlFor="anthropicModel" className="block text-sm font-medium text-gray-600 mb-2">
+                  Anthropic Claude Modell
+                </label>
+                <select
+                  id="anthropicModel"
+                  value={anthropicModel}
+                  onChange={(e) => setAnthropicModel(e.target.value)}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                >
+                  <optgroup label="Claude 4.5 (Neueste Generation - 2025)">
+                    <option value="claude-sonnet-4-5-20250929">claude-sonnet-4-5 - Beste Coding & Reasoning - $3.00 / $15.00 ⭐</option>
+                    <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 - Schnellstes Modell - $1.00 / $5.00 🚀</option>
+                  </optgroup>
+                  <optgroup label="Claude 3.5 (Bewährt)">
+                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 - Sonnet Oktober - $3.00 / $15.00</option>
+                    <option value="claude-3-5-sonnet-20240620">claude-3-5-sonnet-20240620 - Sonnet Juni - $3.00 / $15.00</option>
+                    <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 - Haiku 3.5 - $1.00 / $5.00</option>
+                  </optgroup>
+                  <optgroup label="Claude 3 (Legacy)">
+                    <option value="claude-3-opus-20240229">claude-3-opus-20240229 - Höchste Qualität - $15.00 / $75.00</option>
+                    <option value="claude-3-sonnet-20240229">claude-3-sonnet-20240229 - Ausgewogen - $3.00 / $15.00</option>
+                    <option value="claude-3-haiku-20240307">claude-3-haiku-20240307 - Schnell - $0.25 / $1.25</option>
+                  </optgroup>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  <strong>Preise:</strong> Input / Output pro 1M Tokens<br />
+                  <strong>⭐ Empfohlen:</strong> claude-sonnet-4-5 für beste Coding & Reasoning Performance<br />
+                  <strong>🚀 Schnellste:</strong> claude-haiku-4-5 - 4-5x schneller als Sonnet 4.5<br />
+                  <strong>Hinweis:</strong> Claude-Modelle haben 200K Token Context Window
+                </p>
+              </div>
+            )}
 
-              {aiProvider === 'anthropic' && (
-                <div>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={anthropicWebSearchEnabled}
-                      onChange={(e) => setAnthropicWebSearchEnabled(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Web Search aktivieren 🌐</span>
-                  </label>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Ermöglicht Claude, aktuelle Informationen aus dem Internet abzurufen. Nützlich für Fragen zu aktuellen Ereignissen, Preisen, oder neuen Technologien.
-                  </p>
-                </div>
-              )}
-
+            {aiProvider === 'anthropic' && (
               <div>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={streamingEnabled}
-                    onChange={(e) => setStreamingEnabled(e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
+                    checked={anthropicWebSearchEnabled}
+                    onChange={(e) => setAnthropicWebSearchEnabled(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
                   />
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Streaming aktivieren</span>
-                    <p className="text-xs text-gray-500">
-                      Wenn aktiviert, werden AI-Antworten in Echtzeit gestreamt (gilt für OpenAI und Claude, empfohlen für bessere UX)
-                    </p>
-                  </div>
+                  <span className="text-sm font-medium text-gray-700">Web Search aktivieren 🌐</span>
                 </label>
+                <p className="text-xs text-gray-500 mt-2">
+                  Ermöglicht Claude, aktuelle Informationen aus dem Internet abzurufen. Nützlich für Fragen zu aktuellen Ereignissen, Preisen, oder neuen Technologien.
+                </p>
               </div>
+            )}
 
+            {aiProvider === 'gemini' && (
               <div>
-                <label htmlFor="globalSystemPrompt" className="block text-sm font-medium text-gray-600 mb-2">
-                  Globaler System-Prompt
+                <label htmlFor="geminiModel" className="block text-sm font-medium text-gray-600 mb-2">
+                  Google Gemini Modell
                 </label>
-                <textarea
-                  id="globalSystemPrompt"
-                  value={globalSystemPrompt}
-                  onChange={(e) => setGlobalSystemPrompt(e.target.value)}
-                  placeholder="Du bist ein hilfreicher Assistent..."
-                  rows={12}
-                  className="w-full bg-gray-50 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all resize-none"
-                />
-              </div>
-
-              <button
-                  onClick={handleSaveGlobalSettings}
-                  disabled={isSaving}
-                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                <select
+                  id="geminiModel"
+                  value={geminiModel}
+                  onChange={(e) => setGeminiModel(e.target.value)}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
                 >
-                  {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'System-Prompt Speichern'}
-                </button>
+                  <optgroup label="Gemini 2.0 (Neueste Generation)">
+                    <option value="gemini-2.0-flash">gemini-2.0-flash - Schnell & Multimodal - Kostenlos (bis Limits)</option>
+                    <option value="gemini-2.0-pro-exp-02-05">gemini-2.0-pro-exp-02-05 - Pro Experimental - Kostenlos (Preview)</option>
+                    <option value="gemini-2.0-flash-thinking-exp-01-21">gemini-2.0-flash-thinking - Reasoning - Kostenlos (Preview)</option>
+                  </optgroup>
+                  <optgroup label="Gemini 1.5 (Bewährt)">
+                    <option value="gemini-1.5-pro">gemini-1.5-pro - Complex Reasoning - $3.50 / $10.50</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash - High Volume - $0.075 / $0.30</option>
+                    <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b - Ultra Low Cost - $0.0375 / $0.15</option>
+                  </optgroup>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  <strong>Info:</strong> Gemini 2.0 Flash ist derzeit das empfohlene Standard-Modell.<br />
+                  <strong>Thinking:</strong> Modelle mit "thinking" im Namen sind für komplexe logische Aufgaben optimiert.<br />
+                  <strong>Preise:</strong> Input / Output pro 1M Tokens (für kostenpflichtige Tiers)
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={streamingEnabled}
+                  onChange={(e) => setStreamingEnabled(e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300 text-[var(--primary-color)] focus:ring-[var(--primary-color)]"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Streaming aktivieren</span>
+                  <p className="text-xs text-gray-500">
+                    Wenn aktiviert, werden AI-Antworten in Echtzeit gestreamt (gilt für OpenAI und Claude, empfohlen für bessere UX)
+                  </p>
+                </div>
+              </label>
             </div>
+
+            <div>
+              <label htmlFor="globalSystemPrompt" className="block text-sm font-medium text-gray-600 mb-2">
+                Globaler System-Prompt
+              </label>
+              <textarea
+                id="globalSystemPrompt"
+                value={globalSystemPrompt}
+                onChange={(e) => setGlobalSystemPrompt(e.target.value)}
+                placeholder="Du bist ein hilfreicher Assistent..."
+                rows={12}
+                className="w-full bg-gray-50 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all resize-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSaveGlobalSettings}
+              disabled={isSaving}
+              className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'System-Prompt Speichern'}
+            </button>
           </div>
+        </div>
       )}
 
       {activeTab === 'lightrag' && (
-          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
-              <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
-                LightRAG erweitert Chats mit Kontext aus einer Wissensdatenbank. Diese Einstellungen gelten für alle Chats ohne Vorlage.
-              </div>
+        <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
+          <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
+            <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
+              LightRAG erweitert Chats mit Kontext aus einer Wissensdatenbank. Diese Einstellungen gelten für alle Chats ohne Vorlage.
+            </div>
 
-              {/* Enable Toggle */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <label htmlFor="lightragEnabled" className="block text-sm font-medium text-gray-900">
-                    LightRAG aktivieren
-                  </label>
-                  <p className="text-xs text-gray-500 mt-1">Aktiviert die Wissensdatenbank für alle Chats</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="lightragEnabled"
-                    checked={lightragEnabled}
-                    onChange={(e) => setLightragEnabled(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-
-              {/* API URL */}
+            {/* Enable Toggle */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div>
-                <label htmlFor="lightragUrl" className="block text-sm font-medium text-gray-600 mb-2">
-                  API-URL
+                <label htmlFor="lightragEnabled" className="block text-sm font-medium text-gray-900">
+                  LightRAG aktivieren
+                </label>
+                <p className="text-xs text-gray-500 mt-1">Aktiviert die Wissensdatenbank für alle Chats</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="lightragEnabled"
+                  checked={lightragEnabled}
+                  onChange={(e) => setLightragEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {/* API URL */}
+            <div>
+              <label htmlFor="lightragUrl" className="block text-sm font-medium text-gray-600 mb-2">
+                API-URL
+              </label>
+              <input
+                type="url"
+                id="lightragUrl"
+                value={lightragUrl}
+                onChange={(e) => setLightragUrl(e.target.value)}
+                disabled={!lightragEnabled}
+                className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+
+            {/* API Key */}
+            <div>
+              <label htmlFor="lightragApiKey" className="block text-sm font-medium text-gray-600 mb-2">
+                API-Key
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  id="lightragApiKey"
+                  value={lightragApiKey}
+                  onChange={(e) => setLightragApiKey(e.target.value)}
+                  disabled={!lightragEnabled}
+                  placeholder="Ihr LightRAG API-Key"
+                  className="flex-1 bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  disabled={!lightragEnabled}
+                  className="px-4 h-12 bg-gray-200 hover:bg-gray-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {showApiKey ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            {/* Query Mode */}
+            <div>
+              <label htmlFor="lightragMode" className="block text-sm font-medium text-gray-600 mb-2">
+                Query-Modus
+              </label>
+              <select
+                id="lightragMode"
+                value={lightragMode}
+                onChange={(e) => setLightragMode(e.target.value as any)}
+                disabled={!lightragEnabled}
+                className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="mix">Mix - Integriert Knowledge Graph mit Vector Search (Empfohlen) ⭐</option>
+                <option value="hybrid">Hybrid - Kombiniert Local und Global</option>
+                <option value="local">Local - Nur lokale Entitäten und Beziehungen</option>
+                <option value="global">Global - Nur globale Beziehungsmuster</option>
+                <option value="naive">Naive - Nur Vector-basierte Textsuche (kein Knowledge Graph)</option>
+                <option value="bypass">Bypass - Leere Daten (für direkte LLM-Queries)</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-2">
+                <strong>Mix</strong> ist optimal für Handwerker-Fragen. <strong>Naive</strong> für reine Textsuche. <strong>Bypass</strong> überspringt die Wissensdatenbank.
+              </p>
+            </div>
+
+            {/* Number Inputs in Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="lightragTopK" className="block text-sm font-medium text-gray-600 mb-2">
+                  Top K Ergebnisse
                 </label>
                 <input
-                  type="url"
-                  id="lightragUrl"
-                  value={lightragUrl}
-                  onChange={(e) => setLightragUrl(e.target.value)}
+                  type="number"
+                  id="lightragTopK"
+                  value={lightragTopK}
+                  onChange={(e) => setLightragTopK(Number(e.target.value))}
                   disabled={!lightragEnabled}
+                  min={1}
+                  max={100}
                   className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
-              {/* API Key */}
               <div>
-                <label htmlFor="lightragApiKey" className="block text-sm font-medium text-gray-600 mb-2">
-                  API-Key
+                <label htmlFor="lightragChunkTopK" className="block text-sm font-medium text-gray-600 mb-2">
+                  Top K Chunks
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type={showApiKey ? 'text' : 'password'}
-                    id="lightragApiKey"
-                    value={lightragApiKey}
-                    onChange={(e) => setLightragApiKey(e.target.value)}
-                    disabled={!lightragEnabled}
-                    placeholder="Ihr LightRAG API-Key"
-                    className="flex-1 bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    disabled={!lightragEnabled}
-                    className="px-4 h-12 bg-gray-200 hover:bg-gray-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {showApiKey ? '🙈' : '👁️'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Query Mode */}
-              <div>
-                <label htmlFor="lightragMode" className="block text-sm font-medium text-gray-600 mb-2">
-                  Query-Modus
-                </label>
-                <select
-                  id="lightragMode"
-                  value={lightragMode}
-                  onChange={(e) => setLightragMode(e.target.value as any)}
+                <input
+                  type="number"
+                  id="lightragChunkTopK"
+                  value={lightragChunkTopK}
+                  onChange={(e) => setLightragChunkTopK(Number(e.target.value))}
                   disabled={!lightragEnabled}
+                  min={1}
+                  max={50}
                   className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="mix">Mix - Integriert Knowledge Graph mit Vector Search (Empfohlen) ⭐</option>
-                  <option value="hybrid">Hybrid - Kombiniert Local und Global</option>
-                  <option value="local">Local - Nur lokale Entitäten und Beziehungen</option>
-                  <option value="global">Global - Nur globale Beziehungsmuster</option>
-                  <option value="naive">Naive - Nur Vector-basierte Textsuche (kein Knowledge Graph)</option>
-                  <option value="bypass">Bypass - Leere Daten (für direkte LLM-Queries)</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-2">
-                  <strong>Mix</strong> ist optimal für Handwerker-Fragen. <strong>Naive</strong> für reine Textsuche. <strong>Bypass</strong> überspringt die Wissensdatenbank.
-                </p>
+                />
               </div>
 
-              {/* Number Inputs in Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="lightragTopK" className="block text-sm font-medium text-gray-600 mb-2">
-                    Top K Ergebnisse
-                  </label>
-                  <input
-                    type="number"
-                    id="lightragTopK"
-                    value={lightragTopK}
-                    onChange={(e) => setLightragTopK(Number(e.target.value))}
-                    disabled={!lightragEnabled}
-                    min={1}
-                    max={100}
-                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="lightragChunkTopK" className="block text-sm font-medium text-gray-600 mb-2">
-                    Top K Chunks
-                  </label>
-                  <input
-                    type="number"
-                    id="lightragChunkTopK"
-                    value={lightragChunkTopK}
-                    onChange={(e) => setLightragChunkTopK(Number(e.target.value))}
-                    disabled={!lightragEnabled}
-                    min={1}
-                    max={50}
-                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="lightragMaxEntityTokens" className="block text-sm font-medium text-gray-600 mb-2">
-                    Max Entity Tokens
-                  </label>
-                  <input
-                    type="number"
-                    id="lightragMaxEntityTokens"
-                    value={lightragMaxEntityTokens}
-                    onChange={(e) => setLightragMaxEntityTokens(Number(e.target.value))}
-                    disabled={!lightragEnabled}
-                    min={100}
-                    max={10000}
-                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="lightragMaxRelationTokens" className="block text-sm font-medium text-gray-600 mb-2">
-                    Max Relation Tokens
-                  </label>
-                  <input
-                    type="number"
-                    id="lightragMaxRelationTokens"
-                    value={lightragMaxRelationTokens}
-                    onChange={(e) => setLightragMaxRelationTokens(Number(e.target.value))}
-                    disabled={!lightragEnabled}
-                    min={100}
-                    max={10000}
-                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label htmlFor="lightragMaxTotalTokens" className="block text-sm font-medium text-gray-600 mb-2">
-                    Max Total Tokens
-                  </label>
-                  <input
-                    type="number"
-                    id="lightragMaxTotalTokens"
-                    value={lightragMaxTotalTokens}
-                    onChange={(e) => setLightragMaxTotalTokens(Number(e.target.value))}
-                    disabled={!lightragEnabled}
-                    min={100}
-                    max={20000}
-                    className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
+              <div>
+                <label htmlFor="lightragMaxEntityTokens" className="block text-sm font-medium text-gray-600 mb-2">
+                  Max Entity Tokens
+                </label>
+                <input
+                  type="number"
+                  id="lightragMaxEntityTokens"
+                  value={lightragMaxEntityTokens}
+                  onChange={(e) => setLightragMaxEntityTokens(Number(e.target.value))}
+                  disabled={!lightragEnabled}
+                  min={100}
+                  max={10000}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
               </div>
 
-              {/* Checkboxes */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={lightragEnableRerank}
-                    onChange={(e) => setLightragEnableRerank(e.target.checked)}
-                    disabled={!lightragEnabled}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <span className="text-sm text-gray-700">Reranking aktivieren</span>
+              <div>
+                <label htmlFor="lightragMaxRelationTokens" className="block text-sm font-medium text-gray-600 mb-2">
+                  Max Relation Tokens
                 </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={lightragIncludeReferences}
-                    onChange={(e) => setLightragIncludeReferences(e.target.checked)}
-                    disabled={!lightragEnabled}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <span className="text-sm text-gray-700">Referenzen einbeziehen</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={lightragIncludeChunkContent}
-                    onChange={(e) => setLightragIncludeChunkContent(e.target.checked)}
-                    disabled={!lightragEnabled}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <span className="text-sm text-gray-700">Chunk-Content in Referenzen (Debug)</span>
-                </label>
+                <input
+                  type="number"
+                  id="lightragMaxRelationTokens"
+                  value={lightragMaxRelationTokens}
+                  onChange={(e) => setLightragMaxRelationTokens(Number(e.target.value))}
+                  disabled={!lightragEnabled}
+                  min={100}
+                  max={10000}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
               </div>
 
-              <button
-                  onClick={handleSaveLightRAGSettings}
-                  disabled={isSaving}
-                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'LightRAG-Einstellungen Speichern'}
-                </button>
+              <div className="md:col-span-2">
+                <label htmlFor="lightragMaxTotalTokens" className="block text-sm font-medium text-gray-600 mb-2">
+                  Max Total Tokens
+                </label>
+                <input
+                  type="number"
+                  id="lightragMaxTotalTokens"
+                  value={lightragMaxTotalTokens}
+                  onChange={(e) => setLightragMaxTotalTokens(Number(e.target.value))}
+                  disabled={!lightragEnabled}
+                  min={100}
+                  max={20000}
+                  className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
             </div>
+
+            {/* Checkboxes */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={lightragEnableRerank}
+                  onChange={(e) => setLightragEnableRerank(e.target.checked)}
+                  disabled={!lightragEnabled}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm text-gray-700">Reranking aktivieren</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={lightragIncludeReferences}
+                  onChange={(e) => setLightragIncludeReferences(e.target.checked)}
+                  disabled={!lightragEnabled}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm text-gray-700">Referenzen einbeziehen</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={lightragIncludeChunkContent}
+                  onChange={(e) => setLightragIncludeChunkContent(e.target.checked)}
+                  disabled={!lightragEnabled}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm text-gray-700">Chunk-Content in Referenzen (Debug)</span>
+              </label>
+            </div>
+
+            <button
+              onClick={handleSaveLightRAGSettings}
+              disabled={isSaving}
+              className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'LightRAG-Einstellungen Speichern'}
+            </button>
           </div>
+        </div>
       )}
 
       {activeTab === 'branding' && (
-          <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-6">
-              <div className="p-3 rounded-md bg-purple-50 border border-purple-200 text-sm text-purple-800">
-                Passen Sie das Erscheinungsbild der App an. Änderungen werden sofort nach dem Speichern für alle Benutzer sichtbar.
-              </div>
-
-              {/* Color Settings */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Farbschema</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Primary Color */}
-                  <div>
-                    <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-2">
-                      Primärfarbe
-                    </label>
-                    <div className="flex gap-3 items-center">
-                      <input
-                        type="color"
-                        id="primaryColor"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        placeholder="#59B4E2"
-                        pattern="^#[0-9A-Fa-f]{6}$"
-                        className="flex-1 bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all font-mono"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Wird für Buttons, Links und Akzente verwendet</p>
-                  </div>
-
-                  {/* Secondary Color */}
-                  <div>
-                    <label htmlFor="secondaryColor" className="block text-sm font-medium text-gray-700 mb-2">
-                      Sekundärfarbe
-                    </label>
-                    <div className="flex gap-3 items-center">
-                      <input
-                        type="color"
-                        id="secondaryColor"
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        className="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={secondaryColor}
-                        onChange={(e) => setSecondaryColor(e.target.value)}
-                        placeholder="#62B04A"
-                        pattern="^#[0-9A-Fa-f]{6}$"
-                        className="flex-1 bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all font-mono"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Wird für Gradienten und Hover-Effekte verwendet</p>
-                  </div>
-                </div>
-
-                {/* Color Preview */}
-                <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Vorschau:</p>
-                  <div className="flex flex-wrap gap-3">
-                    <div 
-                      className="px-6 py-3 rounded-lg text-white font-semibold shadow-sm"
-                      style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}
-                    >
-                      Gradient Button
-                    </div>
-                    <div 
-                      className="w-12 h-12 rounded-full shadow-md"
-                      style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}
-                    />
-                    <div 
-                      className="px-4 py-2 rounded-lg border-2"
-                      style={{ borderColor: primaryColor, color: primaryColor }}
-                    >
-                      Primärfarbe
-                    </div>
-                    <div 
-                      className="px-4 py-2 rounded-lg border-2"
-                      style={{ borderColor: secondaryColor, color: secondaryColor }}
-                    >
-                      Sekundärfarbe
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Logo & Title Settings */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Logo & Titel</h3>
-                
-                <div>
-                  <label htmlFor="appTitle" className="block text-sm font-medium text-gray-700 mb-2">
-                    App-Titel (Browser-Tab)
-                  </label>
-                  <input
-                    type="text"
-                    id="appTitle"
-                    value={appTitle}
-                    onChange={(e) => setAppTitle(e.target.value)}
-                    placeholder="RKS Chatbot"
-                    maxLength={100}
-                    className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Wird in der Browser-Leiste und als Tab-Titel angezeigt</p>
-                </div>
-
-                <div>
-                  <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                    Logo URL
-                  </label>
-                  <input
-                    type="text"
-                    id="logoUrl"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png"
-                    className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Pfad zum Logo (z.B. /logo.svg oder https://example.com/logo.png)</p>
-                </div>
-
-                {/* Logo Preview */}
-                {logoUrl && (
-                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                    <p className="text-sm font-medium text-gray-700 mb-3">Logo-Vorschau:</p>
-                    <div className="flex items-center justify-center p-4 bg-white rounded-lg">
-                      <img 
-                        src={logoUrl} 
-                        alt="Logo Preview" 
-                        className="max-h-16 max-w-full object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '<p class="text-sm text-red-600">Logo konnte nicht geladen werden</p>';
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button
-                  onClick={handleSaveBrandingSettings}
-                  disabled={isSaving}
-                  className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'Branding-Einstellungen Speichern'}
-                </button>
+        <div className="flex-1 p-4 overflow-y-auto animate-fade-in-view ios-scrollable">
+          <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-6">
+            <div className="p-3 rounded-md bg-purple-50 border border-purple-200 text-sm text-purple-800">
+              Passen Sie das Erscheinungsbild der App an. Änderungen werden sofort nach dem Speichern für alle Benutzer sichtbar.
             </div>
+
+            {/* Color Settings */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Farbschema</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Primary Color */}
+                <div>
+                  <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-2">
+                    Primärfarbe
+                  </label>
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="color"
+                      id="primaryColor"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      className="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      placeholder="#59B4E2"
+                      pattern="^#[0-9A-Fa-f]{6}$"
+                      className="flex-1 bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all font-mono"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Wird für Buttons, Links und Akzente verwendet</p>
+                </div>
+
+                {/* Secondary Color */}
+                <div>
+                  <label htmlFor="secondaryColor" className="block text-sm font-medium text-gray-700 mb-2">
+                    Sekundärfarbe
+                  </label>
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="color"
+                      id="secondaryColor"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      className="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      placeholder="#62B04A"
+                      pattern="^#[0-9A-Fa-f]{6}$"
+                      className="flex-1 bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all font-mono"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Wird für Gradienten und Hover-Effekte verwendet</p>
+                </div>
+              </div>
+
+              {/* Color Preview */}
+              <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                <p className="text-sm font-medium text-gray-700 mb-3">Vorschau:</p>
+                <div className="flex flex-wrap gap-3">
+                  <div
+                    className="px-6 py-3 rounded-lg text-white font-semibold shadow-sm"
+                    style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}
+                  >
+                    Gradient Button
+                  </div>
+                  <div
+                    className="w-12 h-12 rounded-full shadow-md"
+                    style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}
+                  />
+                  <div
+                    className="px-4 py-2 rounded-lg border-2"
+                    style={{ borderColor: primaryColor, color: primaryColor }}
+                  >
+                    Primärfarbe
+                  </div>
+                  <div
+                    className="px-4 py-2 rounded-lg border-2"
+                    style={{ borderColor: secondaryColor, color: secondaryColor }}
+                  >
+                    Sekundärfarbe
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Logo & Title Settings */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Logo & Titel</h3>
+
+              <div>
+                <label htmlFor="appTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                  App-Titel (Browser-Tab)
+                </label>
+                <input
+                  type="text"
+                  id="appTitle"
+                  value={appTitle}
+                  onChange={(e) => setAppTitle(e.target.value)}
+                  placeholder="RKS Chatbot"
+                  maxLength={100}
+                  className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-1">Wird in der Browser-Leiste und als Tab-Titel angezeigt</p>
+              </div>
+
+              <div>
+                <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                  Logo URL
+                </label>
+                <input
+                  type="text"
+                  id="logoUrl"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://www.rks.info/wp-content/uploads/2020/01/RKS_logo_4c.png"
+                  className="w-full bg-gray-50 px-4 py-2 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-1">Pfad zum Logo (z.B. /logo.svg oder https://example.com/logo.png)</p>
+              </div>
+
+              {/* Logo Preview */}
+              {logoUrl && (
+                <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Logo-Vorschau:</p>
+                  <div className="flex items-center justify-center p-4 bg-white rounded-lg">
+                    <img
+                      src={logoUrl}
+                      alt="Logo Preview"
+                      className="max-h-16 max-w-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = '<p class="text-sm text-red-600">Logo konnte nicht geladen werden</p>';
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleSaveBrandingSettings}
+              disabled={isSaving}
+              className="w-full h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] text-white font-semibold rounded-lg px-4 py-3 hover:opacity-90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Speichert...' : saveSuccess ? <><CheckIcon className="w-5 h-5" /> Gespeichert</> : 'Branding-Einstellungen Speichern'}
+            </button>
           </div>
+        </div>
       )}
 
       {activeTab === 'logs' && (
@@ -1381,7 +1414,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               </div>
             </div>
           )}
-          
+
           {/* Filters */}
           <div className="p-4 border-b border-gray-200 bg-white/80">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -1422,7 +1455,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               </select>
             </div>
           </div>
-          
+
           {/* Logs List */}
           <div className="flex-1 p-4 space-y-2 overflow-y-auto ios-scrollable">
             {isLoadingLogs ? (
@@ -1445,25 +1478,22 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                         )}
                         <span className="text-xs text-gray-500">{formatDuration(log.duration_ms)}</span>
                         {log.ai_provider && (
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            log.ai_provider === 'anthropic' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${log.ai_provider === 'anthropic' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'
+                            }`}>
                             {log.ai_provider === 'anthropic' ? '🤖 Anthropic' : '🤖 OpenAI'}
                           </span>
                         )}
                         {log.ai_total_tokens && (
-                          <span className={`text-xs font-semibold ${
-                            log.ai_provider === 'anthropic' ? 'text-indigo-600' : 'text-purple-600'
-                          }`}>
+                          <span className={`text-xs font-semibold ${log.ai_provider === 'anthropic' ? 'text-indigo-600' : 'text-purple-600'
+                            }`}>
                             {log.ai_total_tokens.toLocaleString()} tokens
                           </span>
                         )}
                         {log.confidence_score !== null && log.confidence_score !== undefined && (
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            log.confidence_score >= 0.7 ? 'bg-green-100 text-green-700' :
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${log.confidence_score >= 0.7 ? 'bg-green-100 text-green-700' :
                             log.confidence_score >= 0.4 ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
+                              'bg-red-100 text-red-700'
+                            }`}>
                             🎯 {(log.confidence_score * 100).toFixed(0)}%
                           </span>
                         )}
@@ -1495,7 +1525,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                       </button>
                     </div>
                   </div>
-                  
+
                   {/* Expanded Details */}
                   {selectedLog?.id === log.id && (
                     <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
@@ -1556,19 +1586,17 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                             {log.ai_total_tokens && (
                               <div>
                                 <p className="text-xs font-semibold text-gray-600">Total Tokens:</p>
-                                <p className={`text-xs font-semibold ${
-                                  log.ai_provider === 'anthropic' ? 'text-indigo-600' : 'text-purple-600'
-                                }`}>{log.ai_total_tokens.toLocaleString()}</p>
+                                <p className={`text-xs font-semibold ${log.ai_provider === 'anthropic' ? 'text-indigo-600' : 'text-purple-600'
+                                  }`}>{log.ai_total_tokens.toLocaleString()}</p>
                               </div>
                             )}
                             {log.confidence_score !== null && log.confidence_score !== undefined && (
                               <div>
                                 <p className="text-xs font-semibold text-gray-600">Confidence:</p>
-                                <p className={`text-xs font-semibold ${
-                                  log.confidence_score >= 0.7 ? 'text-green-600' :
+                                <p className={`text-xs font-semibold ${log.confidence_score >= 0.7 ? 'text-green-600' :
                                   log.confidence_score >= 0.4 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>{(log.confidence_score * 100).toFixed(1)}%</p>
+                                    'text-red-600'
+                                  }`}>{(log.confidence_score * 100).toFixed(1)}%</p>
                               </div>
                             )}
                           </div>
@@ -1653,25 +1681,23 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                   <button
                     onClick={() => setBenchmarkMode('single')}
                     disabled={benchmarkRunning}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      benchmarkMode === 'single'
-                        ? 'border-[var(--primary-color)] bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } disabled:opacity-50`}
+                    className={`p-4 rounded-lg border-2 transition-all ${benchmarkMode === 'single'
+                      ? 'border-[var(--primary-color)] bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      } disabled:opacity-50`}
                   >
                     <div className="text-2xl mb-2">🔁</div>
                     <div className="font-semibold text-sm">Single Query</div>
                     <div className="text-xs text-gray-600 mt-1">Gleiche Anfrage mehrmals</div>
                   </button>
-                  
+
                   <button
                     onClick={() => setBenchmarkMode('multi')}
                     disabled={benchmarkRunning}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      benchmarkMode === 'multi'
-                        ? 'border-[var(--primary-color)] bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } disabled:opacity-50`}
+                    className={`p-4 rounded-lg border-2 transition-all ${benchmarkMode === 'multi'
+                      ? 'border-[var(--primary-color)] bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      } disabled:opacity-50`}
                   >
                     <div className="text-2xl mb-2">👥</div>
                     <div className="font-semibold text-sm">Multi-User</div>
@@ -1689,25 +1715,23 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                   <button
                     onClick={() => setExecutionMode('sequential')}
                     disabled={benchmarkRunning}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      executionMode === 'sequential'
-                        ? 'border-[var(--primary-color)] bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } disabled:opacity-50`}
+                    className={`p-4 rounded-lg border-2 transition-all ${executionMode === 'sequential'
+                      ? 'border-[var(--primary-color)] bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      } disabled:opacity-50`}
                   >
                     <div className="text-2xl mb-2">⏭️</div>
                     <div className="font-semibold text-sm">Nacheinander</div>
                     <div className="text-xs text-gray-600 mt-1">Eine nach der anderen</div>
                   </button>
-                  
+
                   <button
                     onClick={() => setExecutionMode('parallel')}
                     disabled={benchmarkRunning}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      executionMode === 'parallel'
-                        ? 'border-[var(--primary-color)] bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    } disabled:opacity-50`}
+                    className={`p-4 rounded-lg border-2 transition-all ${executionMode === 'parallel'
+                      ? 'border-[var(--primary-color)] bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      } disabled:opacity-50`}
                   >
                     <div className="text-2xl mb-2">⚡</div>
                     <div className="font-semibold text-sm">Parallel</div>
@@ -1787,7 +1811,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                 >
                   {benchmarkRunning ? '🔄 Benchmark läuft...' : '▶️ Benchmark starten'}
                 </button>
-                
+
                 {benchmarkRunning && (
                   <button
                     onClick={handleCancelBenchmark}
@@ -1813,23 +1837,23 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               {benchmarkResults && (
                 <div className="mt-6 space-y-4">
                   <h3 className="text-lg font-bold text-gray-900">📊 Ergebnisse</h3>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-blue-50 rounded-lg p-4">
                       <div className="text-sm text-blue-600 font-medium mb-1">Gesamt-Zeit</div>
                       <div className="text-2xl font-bold text-blue-900">{benchmarkResults.totalTime.toFixed(2)}s</div>
                     </div>
-                    
+
                     <div className="bg-green-50 rounded-lg p-4">
                       <div className="text-sm text-green-600 font-medium mb-1">Durchschnitt</div>
                       <div className="text-2xl font-bold text-green-900">{benchmarkResults.avgTime.toFixed(2)}s</div>
                     </div>
-                    
+
                     <div className="bg-purple-50 rounded-lg p-4">
                       <div className="text-sm text-purple-600 font-medium mb-1">Schnellste</div>
                       <div className="text-2xl font-bold text-purple-900">{benchmarkResults.minTime.toFixed(2)}s</div>
                     </div>
-                    
+
                     <div className="bg-orange-50 rounded-lg p-4">
                       <div className="text-sm text-orange-600 font-medium mb-1">Langsamste</div>
                       <div className="text-2xl font-bold text-orange-900">{benchmarkResults.maxTime.toFixed(2)}s</div>
@@ -1863,7 +1887,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
                   {benchmarkResults.detailedMetrics && (
                     <div className="mt-6">
                       <h3 className="text-lg font-bold text-gray-900 mb-4">🔬 Detaillierte Performance-Metriken</h3>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* AI Response Times */}
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
