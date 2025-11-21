@@ -35,16 +35,16 @@ export interface User {
 }
 
 export interface Vorlage {
-    id: number;
-    name: string;
-    description: string;
-    system_prompt: string;
-    isFavorite: boolean;
-    use_lightrag: boolean;
-    is_dialog_mode: boolean;
-    dialog_goal: string | null;
-    is_global: boolean;
-    created_at: string;
+  id: number;
+  name: string;
+  description: string;
+  system_prompt: string;
+  isFavorite: boolean;
+  use_lightrag: boolean;
+  is_dialog_mode: boolean;
+  dialog_goal: string | null;
+  is_global: boolean;
+  created_at: string;
 }
 
 export interface Attachment {
@@ -86,55 +86,58 @@ export interface AppFile {
 }
 
 export interface Settings {
-    // FastAPI Backend URL
-    apiBaseUrl: string;
-    
-    // Global Settings (Admin)
-    globalSystemPrompt?: string;
-    
-    // AI Provider Configuration (Admin)
-    ai_provider?: 'openai' | 'anthropic';
-    
-    // OpenAI Configuration (Admin)
-    openai_model?: string;
-    streaming_enabled?: boolean;
-    
-    // Anthropic Configuration (Admin)
-    anthropic_model?: string;
-    anthropic_web_search_enabled?: boolean;
-    
-    // LightRAG Configuration (Admin)
-    lightrag_enabled?: boolean;
-    lightrag_url?: string;
-    lightrag_api_key?: string;
-    lightrag_mode?: 'local' | 'global' | 'hybrid' | 'mix' | 'naive' | 'bypass';
-    lightrag_top_k?: number;
-    lightrag_chunk_top_k?: number;
-    lightrag_max_entity_tokens?: number;
-    lightrag_max_relation_tokens?: number;
-    lightrag_max_total_tokens?: number;
-    lightrag_enable_rerank?: boolean;
-    lightrag_include_references?: boolean;
-    lightrag_include_chunk_content?: boolean;
-    
-    // Branding Configuration (Admin)
-    primary_color?: string;
-    secondary_color?: string;
-    logo_url?: string;
-    app_title?: string;
-    
-    // Legacy n8n fields (deprecated)
-    n8nLoginWebhookUrl: string | null;
-    n8nGetUserWebhookUrl: string | null;
-    n8nUpdateUserWebhookUrl: string | null;
-    n8nRegisterUserWebhookUrl: string | null;
-    n8nChatWebhookUrl: string | null;
-    n8nGetVorlagenWebhookUrl: string | null;
-    n8nCreateVorlageWebhookUrl?: string | null;
-    n8nGetChatsWebhookUrl: string | null;
-    n8nGetMessagesWebhookUrl: string | null;
-    
-    personalizationPrompt: string;
+  // FastAPI Backend URL
+  apiBaseUrl: string;
+
+  // Global Settings (Admin)
+  globalSystemPrompt?: string;
+
+  // AI Provider Configuration (Admin)
+  ai_provider?: 'openai' | 'anthropic' | 'gemini';
+
+  // OpenAI Configuration (Admin)
+  openai_model?: string;
+  streaming_enabled?: boolean;
+
+  // Anthropic Configuration (Admin)
+  anthropic_model?: string;
+  anthropic_web_search_enabled?: boolean;
+
+  // Gemini Configuration (Admin)
+  gemini_model?: string;
+
+  // LightRAG Configuration (Admin)
+  lightrag_enabled?: boolean;
+  lightrag_url?: string;
+  lightrag_api_key?: string;
+  lightrag_mode?: 'local' | 'global' | 'hybrid' | 'mix' | 'naive' | 'bypass';
+  lightrag_top_k?: number;
+  lightrag_chunk_top_k?: number;
+  lightrag_max_entity_tokens?: number;
+  lightrag_max_relation_tokens?: number;
+  lightrag_max_total_tokens?: number;
+  lightrag_enable_rerank?: boolean;
+  lightrag_include_references?: boolean;
+  lightrag_include_chunk_content?: boolean;
+
+  // Branding Configuration (Admin)
+  primary_color?: string;
+  secondary_color?: string;
+  logo_url?: string;
+  app_title?: string;
+
+  // Legacy n8n fields (deprecated)
+  n8nLoginWebhookUrl: string | null;
+  n8nGetUserWebhookUrl: string | null;
+  n8nUpdateUserWebhookUrl: string | null;
+  n8nRegisterUserWebhookUrl: string | null;
+  n8nChatWebhookUrl: string | null;
+  n8nGetVorlagenWebhookUrl: string | null;
+  n8nCreateVorlageWebhookUrl?: string | null;
+  n8nGetChatsWebhookUrl: string | null;
+  n8nGetMessagesWebhookUrl: string | null;
+
+  personalizationPrompt: string;
 }
 
 export interface UserSettings {
