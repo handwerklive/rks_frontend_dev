@@ -799,7 +799,7 @@ const AdminView: React.FC<AdminViewProps> = ({ users, onUpdateUser, onDeleteUser
               <select
                 id="aiProvider"
                 value={aiProvider}
-                onChange={(e) => setAiProvider(e.target.value as 'openai' | 'anthropic')}
+                onChange={(e) => setAiProvider(e.target.value as 'openai' | 'anthropic' | 'gemini')}
                 className="w-full bg-gray-50 h-12 px-4 py-3 rounded-lg border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition-all"
               >
                 <option value="openai">OpenAI (GPT-4, GPT-5, o1, o3, o4)</option>
