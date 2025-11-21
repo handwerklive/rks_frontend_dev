@@ -66,7 +66,7 @@ const App: React.FC = () => {
     const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
     const [showPermissionsCheck, setShowPermissionsCheck] = useState(false);
     const [isProcessingQuickAudio, setIsProcessingQuickAudio] = useState(false);
-    
+
     // Global Search Keyboard Shortcut
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -110,7 +110,7 @@ const App: React.FC = () => {
         const loadBrandingSettings = async () => {
             try {
                 const globalSettings = await settingsAPI.getGlobal();
-                
+
                 // Update settings state with branding values
                 updateSettings({
                     primary_color: globalSettings.primary_color,
@@ -118,7 +118,7 @@ const App: React.FC = () => {
                     logo_url: globalSettings.logo_url,
                     app_title: globalSettings.app_title,
                 });
-                
+
                 // Apply branding to CSS and document
                 if (globalSettings.primary_color) {
                     document.documentElement.style.setProperty('--primary-color', globalSettings.primary_color);
@@ -139,7 +139,7 @@ const App: React.FC = () => {
     // Navigation Handler
     const handleNavigate = async (targetView: View, event?: React.MouseEvent, data?: any) => {
         event?.preventDefault();
-        
+
         // Refresh data when navigating to specific views
         if (targetView === View.ADMIN && user?.role === UserRole.ADMIN) {
             setIsFetchingUsers(true);
@@ -154,7 +154,7 @@ const App: React.FC = () => {
                     status: u.status === 'active' ? UserStatus.ACTIVE : UserStatus.PENDING,
                 }));
                 replaceAllUsers(mappedUsers);
-                
+
                 // Load global settings from backend
                 const globalSettings = await settingsAPI.getGlobal();
                 updateSettings({
@@ -162,6 +162,8 @@ const App: React.FC = () => {
                     ai_provider: globalSettings.ai_provider,
                     openai_model: globalSettings.openai_model,
                     anthropic_model: globalSettings.anthropic_model,
+                    anthropic_web_search_enabled: globalSettings.anthropic_web_search_enabled,
+                    gemini_model: globalSettings.gemini_model,
                     streaming_enabled: globalSettings.streaming_enabled,
                     lightrag_enabled: globalSettings.lightrag_enabled,
                     lightrag_url: globalSettings.lightrag_url,
@@ -180,7 +182,7 @@ const App: React.FC = () => {
                     logo_url: globalSettings.logo_url,
                     app_title: globalSettings.app_title,
                 });
-                
+
                 // Note: Branding (colors, title) are already applied on app start
                 // and updated immediately when saved in AdminView, so we don't need to reapply them here
             } catch (error: any) {
@@ -263,7 +265,7 @@ const App: React.FC = () => {
         } else if (targetView === View.CHAT && data?.chatId) {
             // Handle chat navigation
             setCurrentChatId(data.chatId);
-            
+
             if (data.shouldLoadChat) {
                 // Load existing chat messages
                 setIsLoading(true);
@@ -271,10 +273,10 @@ const App: React.FC = () => {
                     console.log('[APP] Loading chat:', data.chatId);
                     const messages = await chatsAPI.getMessages(data.chatId);
                     console.log('[APP] Loaded messages:', messages.length);
-                    
+
                     const existingChat = chatSessions.find(cs => cs.id === data.chatId);
                     if (existingChat) {
-                        setChatSessions(prev => prev.map(cs => 
+                        setChatSessions(prev => prev.map(cs =>
                             cs.id === data.chatId ? { ...cs, messages } : cs
                         ));
                     } else {
@@ -307,7 +309,7 @@ const App: React.FC = () => {
                     setChatSessions(prev => [newChatSession, ...prev]);
                 }
             }
-            
+
             setView(targetView);
             setViewData(data);
         } else {
@@ -322,7 +324,7 @@ const App: React.FC = () => {
         // Navigation is handled by the useEffect [user]
         return result;
     };
-    
+
     const handleLogout = () => {
         logout();
     };
@@ -359,7 +361,7 @@ const App: React.FC = () => {
             setIsLoading(false);
         }
     };
-    
+
     const handleEditVorlage = (vorlage: Vorlage, event: React.MouseEvent) => {
         handleNavigate(View.VORLAGEN_FORM, event, { vorlageId: vorlage.id });
     };
@@ -415,11 +417,11 @@ const App: React.FC = () => {
         setChatSessions(prev => [newChat, ...prev]);
         setCurrentChatId(newChat.id);
         setView(View.CHAT);
-        
+
     };
 
     const handleNewQuickChat = () => {
-         const newChat: ChatSession = {
+        const newChat: ChatSession = {
             id: Date.now(),
             title: `Schnell-Chat`,
             messages: [],
@@ -434,12 +436,12 @@ const App: React.FC = () => {
     const handleSelectChat = async (chatId: number, event: React.MouseEvent) => {
         event.preventDefault();
         setCurrentChatId(chatId);
-        
+
         // Load messages from Backend API
         setIsLoading(true);
         try {
             const messages = await chatsAPI.getMessages(chatId);
-            setChatSessions(prev => prev.map(cs => 
+            setChatSessions(prev => prev.map(cs =>
                 cs.id === chatId ? { ...cs, messages } : cs
             ));
         } catch (error: any) {
@@ -448,7 +450,7 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-        
+
         setView(View.CHAT);
     };
 
@@ -456,7 +458,7 @@ const App: React.FC = () => {
     const handleSendMessage = async (chatId: number, messageContent: string, useDocuments: boolean, attachment: { mimeType: string; data: string } | null = null) => {
         const chatBeforeUpdate = chatSessions.find(cs => cs.id === chatId);
         if (!chatBeforeUpdate) return;
-    
+
         const userMessage: Message = {
             id: `user-${Date.now()}`,
             role: 'user',
@@ -464,13 +466,13 @@ const App: React.FC = () => {
             timestamp: new Date().toISOString(),
             attachment: attachment ? { type: 'image', ...attachment } : null,
         };
-        
+
         setIsLoading(true);
         setIsStreaming(false);
         setIsLoadingTimeout(false);
         setLoadingStatus('Verarbeite Anfrage...');
         setWaitingForInput(null); // Clear waiting indicator when user sends message
-        
+
         // Set timeout indicator after 90 seconds
         const timeoutTimer = setTimeout(() => {
             setIsLoadingTimeout(true);
@@ -478,10 +480,10 @@ const App: React.FC = () => {
 
         try {
             // Optimistically add user message to UI
-            setChatSessions(prev => prev.map(cs => 
+            setChatSessions(prev => prev.map(cs =>
                 cs.id === chatId ? { ...cs, messages: [...cs.messages, userMessage] } : cs
             ));
-            
+
             // Add file context if documents are used
             let finalMessageContent = messageContent;
             if (useDocuments && files.length > 0) {
@@ -491,149 +493,149 @@ const App: React.FC = () => {
 
             // Check if streaming is enabled
             const useStreaming = settings.streaming_enabled !== false; // Default to true if not set
-            
+
             if (useStreaming) {
                 // Streaming mode
                 const token = localStorage.getItem('access_token');
                 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-                
+
                 const response = await fetch(`${API_BASE_URL}api/chats/message/stream`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    message: finalMessageContent,
-                    chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId,
-                    vorlage_id: chatBeforeUpdate.vorlage_id,
-                    attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
-                })
-            });
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        message: finalMessageContent,
+                        chat_id: chatId === Date.now() || chatId > 1000000000000 ? null : chatId,
+                        vorlage_id: chatBeforeUpdate.vorlage_id,
+                        attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
+                    })
+                });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder('utf-8');
-            
-            let streamedContent = '';
-            let aiMessageId = `ai-${Date.now()}`;
-            let actualChatId = chatId;
-            let isFirstChunk = true;
-            let buffer = '';
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder('utf-8');
 
-            if (reader) {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+                let streamedContent = '';
+                let aiMessageId = `ai-${Date.now()}`;
+                let actualChatId = chatId;
+                let isFirstChunk = true;
+                let buffer = '';
 
-                    buffer += decoder.decode(value, { stream: true });
+                if (reader) {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-                    // Process complete SSE messages
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        buffer += decoder.decode(value, { stream: true });
 
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                
-                                switch (data.type) {
-                                    case 'status':
-                                        if (data.message === '') {
-                                            // Empty status means stream has started, remove loading but set streaming
-                                            setIsLoading(false);
-                                            setIsStreaming(true);
-                                            setLoadingStatus('');
-                                        } else {
-                                            setLoadingStatus(data.message);
-                                        }
-                                        break;
-                                    
-                                    case 'chat_id':
-                                        actualChatId = data.chat_id;
-                                        setChatSessions(prev => prev.map(cs => 
-                                            cs.id === chatId ? { ...cs, id: actualChatId } : cs
-                                        ));
-                                        setCurrentChatId(actualChatId);
-                                        break;
-                                    
-                                    case 'content':
-                                        streamedContent += data.content;
-                                        
-                                        if (isFirstChunk) {
-                                            // Remove loading state immediately when first content arrives, but set streaming
-                                            setIsLoading(false);
-                                            setIsStreaming(true);
-                                            setLoadingStatus('');
-                                            
-                                            // Add initial AI message
-                                            const initialMessage: Message = {
-                                                id: aiMessageId,
-                                                role: 'model',
-                                                content: streamedContent,
-                                                timestamp: new Date().toISOString(),
-                                                attachment: null,
-                                            };
-                                            setChatSessions(prev => prev.map(cs => 
-                                                cs.id === actualChatId ? { ...cs, messages: [...cs.messages, initialMessage] } : cs
+                        // Process complete SSE messages
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+
+                                    switch (data.type) {
+                                        case 'status':
+                                            if (data.message === '') {
+                                                // Empty status means stream has started, remove loading but set streaming
+                                                setIsLoading(false);
+                                                setIsStreaming(true);
+                                                setLoadingStatus('');
+                                            } else {
+                                                setLoadingStatus(data.message);
+                                            }
+                                            break;
+
+                                        case 'chat_id':
+                                            actualChatId = data.chat_id;
+                                            setChatSessions(prev => prev.map(cs =>
+                                                cs.id === chatId ? { ...cs, id: actualChatId } : cs
                                             ));
-                                            isFirstChunk = false;
-                                        } else {
-                                            // Update existing AI message
-                                            setChatSessions(prev => prev.map(cs => 
+                                            setCurrentChatId(actualChatId);
+                                            break;
+
+                                        case 'content':
+                                            streamedContent += data.content;
+
+                                            if (isFirstChunk) {
+                                                // Remove loading state immediately when first content arrives, but set streaming
+                                                setIsLoading(false);
+                                                setIsStreaming(true);
+                                                setLoadingStatus('');
+
+                                                // Add initial AI message
+                                                const initialMessage: Message = {
+                                                    id: aiMessageId,
+                                                    role: 'model',
+                                                    content: streamedContent,
+                                                    timestamp: new Date().toISOString(),
+                                                    attachment: null,
+                                                };
+                                                setChatSessions(prev => prev.map(cs =>
+                                                    cs.id === actualChatId ? { ...cs, messages: [...cs.messages, initialMessage] } : cs
+                                                ));
+                                                isFirstChunk = false;
+                                            } else {
+                                                // Update existing AI message
+                                                setChatSessions(prev => prev.map(cs =>
+                                                    cs.id === actualChatId ? {
+                                                        ...cs,
+                                                        messages: cs.messages.map(msg =>
+                                                            msg.id === aiMessageId ? { ...msg, content: streamedContent } : msg
+                                                        )
+                                                    } : cs
+                                                ));
+                                            }
+                                            break;
+
+                                        case 'waiting_for_input':
+                                            // Show waiting for input indicator
+                                            setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
+                                            setIsLoading(false);
+                                            break;
+
+                                        case 'done':
+                                            aiMessageId = data.message_id;
+                                            // DON'T clear waiting indicator here - it should stay until user sends message
+                                            // Update final message ID
+                                            setChatSessions(prev => prev.map(cs =>
                                                 cs.id === actualChatId ? {
                                                     ...cs,
-                                                    messages: cs.messages.map(msg => 
-                                                        msg.id === aiMessageId ? { ...msg, content: streamedContent } : msg
+                                                    messages: cs.messages.map(msg =>
+                                                        msg.id === `ai-${Date.now()}` || msg.content === streamedContent ?
+                                                            { ...msg, id: aiMessageId } : msg
                                                     )
                                                 } : cs
                                             ));
-                                        }
-                                        break;
-                                    
-                                    case 'waiting_for_input':
-                                        // Show waiting for input indicator
-                                        setWaitingForInput(data.message || 'Warte auf Ihre Antwort...');
-                                        setIsLoading(false);
-                                        break;
-                                    
-                                    case 'done':
-                                        aiMessageId = data.message_id;
-                                        // DON'T clear waiting indicator here - it should stay until user sends message
-                                        // Update final message ID
-                                        setChatSessions(prev => prev.map(cs => 
-                                            cs.id === actualChatId ? {
-                                                ...cs,
-                                                messages: cs.messages.map(msg => 
-                                                    msg.id === `ai-${Date.now()}` || msg.content === streamedContent ? 
-                                                        { ...msg, id: aiMessageId } : msg
-                                                )
-                                            } : cs
-                                        ));
-                                        setIsLoading(false);
-                                        setIsStreaming(false);
-                                        break;
-                                    
-                                    case 'title':
-                                        // Update chat title
-                                        setChatSessions(prev => prev.map(cs => 
-                                            cs.id === actualChatId ? { ...cs, title: data.title } : cs
-                                        ));
-                                        break;
-                                    
-                                    case 'error':
-                                        throw new Error(data.message);
+                                            setIsLoading(false);
+                                            setIsStreaming(false);
+                                            break;
+
+                                        case 'title':
+                                            // Update chat title
+                                            setChatSessions(prev => prev.map(cs =>
+                                                cs.id === actualChatId ? { ...cs, title: data.title } : cs
+                                            ));
+                                            break;
+
+                                        case 'error':
+                                            throw new Error(data.message);
+                                    }
+                                } catch (parseError) {
+                                    console.error('Error parsing SSE data:', parseError);
                                 }
-                            } catch (parseError) {
-                                console.error('Error parsing SSE data:', parseError);
                             }
                         }
                     }
                 }
-            }
             } else {
                 // Non-streaming mode (fallback)
                 const response = await chatsAPI.sendMessage({
@@ -642,21 +644,21 @@ const App: React.FC = () => {
                     vorlage_id: chatBeforeUpdate.vorlage_id,
                     attachment: attachment ? { type: 'image', mimeType: attachment.mimeType, data: attachment.data } : undefined
                 });
-                
+
                 // Update status based on backend response
                 if (response.status_log && response.status_log.length > 0) {
                     const lastStatus = response.status_log[response.status_log.length - 1];
                     setLoadingStatus(lastStatus);
                 }
-                
+
                 // Update chat ID if it was newly created
                 if (response.chat_id !== chatId) {
-                    setChatSessions(prev => prev.map(cs => 
+                    setChatSessions(prev => prev.map(cs =>
                         cs.id === chatId ? { ...cs, id: response.chat_id } : cs
                     ));
                     setCurrentChatId(response.chat_id);
                 }
-                
+
                 // Add AI response to messages
                 const modelMessage: Message = {
                     id: response.message_id,
@@ -666,7 +668,7 @@ const App: React.FC = () => {
                     attachment: null,
                 };
 
-                setChatSessions(prev => prev.map(cs => 
+                setChatSessions(prev => prev.map(cs =>
                     cs.id === response.chat_id ? { ...cs, messages: [...cs.messages, modelMessage] } : cs
                 ));
             }
@@ -680,7 +682,7 @@ const App: React.FC = () => {
                 timestamp: new Date().toISOString(),
                 attachment: null,
             };
-            setChatSessions(prev => prev.map(cs => 
+            setChatSessions(prev => prev.map(cs =>
                 cs.id === chatId ? { ...cs, messages: [...cs.messages, errorMessage] } : cs
             ));
             // Reset both loading and streaming state on error
@@ -693,13 +695,13 @@ const App: React.FC = () => {
             // Don't reset loading state here - it's already handled in the content case or error case
         }
     };
-    
+
     const handleDeleteChat = async (chatId: number) => {
         setIsLoading(true);
         try {
             await chatsAPI.delete(chatId);
             setChatSessions(prev => prev.filter(cs => cs.id !== chatId));
-            
+
             if (currentChatId === chatId) {
                 setCurrentChatId(null);
                 setView(View.HOME);
@@ -718,8 +720,8 @@ const App: React.FC = () => {
         if (!currentChatSession || !currentChatSession.vorlage_id) return null;
         return vorlagen.find(v => v.id === currentChatSession.vorlage_id) || null;
     }, [currentChatSession, vorlagen]);
-    
-     const existingVorlageToEdit = useMemo(() => {
+
+    const existingVorlageToEdit = useMemo(() => {
         if (view === View.VORLAGEN_FORM && viewData?.vorlageId) {
             return vorlagen.find(v => v.id === viewData.vorlageId) || null;
         }
@@ -730,35 +732,35 @@ const App: React.FC = () => {
     const handleQuickAudioNote = async (audioBlob: Blob, duration: number) => {
         try {
             setIsProcessingQuickAudio(true);
-            
+
             // Validate blob is not empty
             if (!audioBlob || audioBlob.size === 0) {
                 console.error('[App] Audio blob is empty:', audioBlob);
                 showToast('Die Aufnahme ist leer. Bitte versuche es erneut.', 'error');
                 return;
             }
-            
+
             console.log('[App] Processing audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
-            
+
             // Convert Blob to File - use actual blob type (mp4 on iOS, webm on others)
             const extension = audioBlob.type.includes('mp4') ? '.m4a' : '.webm';
             const audioFile = new File([audioBlob], `quick_note_${Date.now()}${extension}`, { type: audioBlob.type });
-            
+
             // Double-check file size
             if (audioFile.size === 0) {
                 console.error('[App] Audio file is empty after conversion');
                 showToast('Die Aufnahme konnte nicht verarbeitet werden. Bitte versuche es erneut.', 'error');
                 return;
             }
-            
+
             console.log('[App] Uploading audio file:', audioFile.name, audioFile.size, 'bytes');
-            
+
             // Upload and transcribe
             const { transcriptionsAPI, notebooksAPI } = await import('./lib/api');
             const response = await transcriptionsAPI.upload(audioFile, 'de', (progress) => {
                 console.log('Upload progress:', progress);
             });
-            
+
             // Check if transcription was successful
             if (response.status === 'completed' && response.transcription) {
                 // Get location (non-blocking)
@@ -775,13 +777,13 @@ const App: React.FC = () => {
                 } catch (locationError) {
                     console.log('Could not get location, continuing without it:', locationError);
                 }
-                
+
                 // Save to daily notes
                 await notebooksAPI.quickAddNote({
                     content: response.transcription,
                     ...locationData
                 });
-                
+
                 showToast('Audionotiz erfolgreich gespeichert!', 'success');
             } else {
                 showToast('Transkription fehlgeschlagen', 'error');
@@ -816,12 +818,12 @@ const App: React.FC = () => {
                 const selectedVorlage = vorlagen.find(v => v.id === viewData?.vorlageId);
                 return <ChatListView vorlageName={selectedVorlage?.name || 'Vorlage'} chats={chatsForVorlage} onSelectChat={handleSelectChat} onNewChat={handleNewChat} onNavigate={handleNavigate} onLogout={handleLogout} onDeleteChat={handleDeleteChat} />;
             case View.CHAT_HISTORY:
-                 return <ChatHistoryView 
-                    chats={chatSessions} 
-                    vorlagen={vorlagen} 
-                    onSelectChat={handleSelectChat} 
-                    onNavigate={handleNavigate} 
-                    onLogout={handleLogout} 
+                return <ChatHistoryView
+                    chats={chatSessions}
+                    vorlagen={vorlagen}
+                    onSelectChat={handleSelectChat}
+                    onNavigate={handleNavigate}
+                    onLogout={handleLogout}
                     onDeleteChat={handleDeleteChat}
                     currentPage={chatPage}
                     totalPages={chatTotalPages}
@@ -843,7 +845,7 @@ const App: React.FC = () => {
                             setIsFetchingChats(false);
                         }
                     }}
-                 />;
+                />;
             case View.FILES:
                 return <FileView files={files} onAddFile={handleAddFile} onDeleteFile={handleDeleteFile} onNavigate={handleNavigate} onLogout={handleLogout} />;
             case View.TRANSCRIPTIONS:
@@ -862,18 +864,18 @@ const App: React.FC = () => {
                     handleNavigate(View.HOME);
                     return null;
                 }
-                return <ChatView 
-                    chatSession={currentChatSession} 
-                    vorlage={currentVorlage} 
-                    onSendMessage={handleSendMessage} 
-                    onNavigate={handleNavigate} 
-                    onLogout={handleLogout} 
+                return <ChatView
+                    chatSession={currentChatSession}
+                    vorlage={currentVorlage}
+                    onSendMessage={handleSendMessage}
+                    onNavigate={handleNavigate}
+                    onLogout={handleLogout}
                     isLoading={isLoading}
                     isStreaming={isStreaming}
-                    isLoadingTimeout={isLoadingTimeout} 
-                    loadingStatus={loadingStatus} 
-                    waitingForInput={waitingForInput} 
-                    settings={settings} 
+                    isLoadingTimeout={isLoadingTimeout}
+                    loadingStatus={loadingStatus}
+                    waitingForInput={waitingForInput}
+                    settings={settings}
                     onUpdateSettings={updateSettings}
                     autoSendMessage={viewData?.autoSendMessage}
                 />;
@@ -881,7 +883,7 @@ const App: React.FC = () => {
                 return <LoginView onLogin={handleLogin} onRegister={handleRegister} onNavigate={handleNavigate} />;
         }
     };
-    
+
     return (
         <main className="h-dvh w-screen bg-gray-100 font-sans overflow-hidden">
             {showNetworkAnimation && !user && (
@@ -900,7 +902,7 @@ const App: React.FC = () => {
                         <div className="flex flex-col items-center gap-4">
                             <div className="w-16 h-16 border-4 border-t-transparent border-white rounded-full animate-spin"></div>
                             <p className="text-white font-semibold">
-                              {isFetchingUsers ? 'Benutzer werden geladen...' : isFetchingChats ? 'Chats werden geladen...' : 'Vorlagen werden geladen...'}
+                                {isFetchingUsers ? 'Benutzer werden geladen...' : isFetchingChats ? 'Chats werden geladen...' : 'Vorlagen werden geladen...'}
                             </p>
                         </div>
                     </div>
@@ -914,7 +916,7 @@ const App: React.FC = () => {
                     />
                 )}
             </div>
-            
+
             {/* Global Search */}
             <GlobalSearch
                 isOpen={isSearchOpen}
@@ -923,7 +925,7 @@ const App: React.FC = () => {
                 chats={chatSessions}
                 vorlagen={vorlagen}
             />
-            
+
             {/* Floating Action Button (Mobile only) - ausgeblendet in Chat-Ansicht */}
             {user && view !== View.CHAT && (
                 <div className="sm:hidden">
@@ -936,7 +938,7 @@ const App: React.FC = () => {
                     />
                 </div>
             )}
-            
+
             {/* Audio Recorder */}
             <AudioRecorder
                 isOpen={isAudioRecorderOpen}
@@ -944,7 +946,7 @@ const App: React.FC = () => {
                 onSave={async (audioBlob, duration) => {
                     try {
                         setIsLoading(true);
-                        
+
                         // Validate blob is not empty
                         if (!audioBlob || audioBlob.size === 0) {
                             console.error('[App] Audio blob is empty:', audioBlob);
@@ -952,13 +954,13 @@ const App: React.FC = () => {
                             setIsLoading(false);
                             return;
                         }
-                        
+
                         console.log('[App] Processing audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
-                        
+
                         // Convert Blob to File - use actual blob type (mp4 on iOS, webm on others)
                         const extension = audioBlob.type.includes('mp4') ? '.m4a' : '.webm';
                         const audioFile = new File([audioBlob], `recording_${Date.now()}${extension}`, { type: audioBlob.type });
-                        
+
                         // Double-check file size
                         if (audioFile.size === 0) {
                             console.error('[App] Audio file is empty after conversion');
@@ -966,17 +968,17 @@ const App: React.FC = () => {
                             setIsLoading(false);
                             return;
                         }
-                        
+
                         console.log('[App] Uploading audio file:', audioFile.name, audioFile.size, 'bytes');
-                        
+
                         // Upload to transcriptions
                         const { transcriptionsAPI } = await import('./lib/api');
                         await transcriptionsAPI.upload(audioFile, 'de', (progress) => {
                             console.log('Upload progress:', progress);
                         });
-                        
+
                         showToast('Audio hochgeladen und wird transkribiert!', 'success');
-                        
+
                         // Navigate to transcriptions view
                         setView(View.TRANSCRIPTIONS);
                     } catch (error: any) {
@@ -987,7 +989,7 @@ const App: React.FC = () => {
                     }
                 }}
             />
-            
+
             {/* Quick Note Popup */}
             <QuickNotePopup
                 isOpen={isQuickNoteOpen}
@@ -1003,7 +1005,7 @@ const App: React.FC = () => {
                     }
                 }}
             />
-            
+
             {/* Permissions Check */}
             {showPermissionsCheck && (
                 <PermissionsCheck
@@ -1013,7 +1015,7 @@ const App: React.FC = () => {
                     }}
                 />
             )}
-            
+
             {/* Processing Quick Audio Overlay */}
             {isProcessingQuickAudio && (
                 <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in-view">
